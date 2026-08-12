@@ -1,0 +1,217 @@
+"use client";
+
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  AlertIcon, CheckIcon, ChevronIcon, CloseIcon, CodeIcon, CopyIcon,
+  DownloadIcon, FileIcon, LockIcon, ScanIcon, ShieldIcon, UploadIcon,
+} from "./icons";
+import { languageLabels, scanCode, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
+
+const demoCode = `const express = require('express');
+const { exec } = require('child_process');
+const app = express();
+
+const API_KEY = "sk_live_51N8exampleSecretKey";
+
+app.get('/users', async (req, res) => {
+  const query = "SELECT * FROM users WHERE name = '" + req.query.name + "'";
+  const users = await db.query(query);
+  res.json(users);
+});
+
+app.get('/diagnostics', (req, res) => {
+  exec(\`ping -c 1 \${req.query.host}\`, (error, stdout) => {
+    res.send(stdout);
+  });
+});
+
+app.post('/preview', (req, res) => {
+  document.getElementById('preview').innerHTML = req.body.content;
+});`;
+
+const acceptedExtensions = ["js", "jsx", "mjs", "cjs", "ts", "tsx", "py", "java", "php", "go", "cs", "rb", "txt"];
+const severities: Array<Severity | "all"> = ["all", "critical", "high", "medium", "low"];
+const severityLabels: Record<Severity | "all", string> = {
+  all: "Все", critical: "Критические", high: "Высокие", medium: "Средние", low: "Низкие", info: "Инфо",
+};
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} Б`;
+  return `${(bytes / 1024).toFixed(bytes > 10240 ? 0 : 1)} КБ`;
+}
+
+function ScoreRing({ score }: { score: number }) {
+  const color = score >= 85 ? "#15936c" : score >= 60 ? "#dd8a24" : "#e24d4d";
+  return (
+    <div className="score-ring" style={{ "--score": score, "--score-color": color } as React.CSSProperties}>
+      <div><strong>{score}</strong><span>/ 100</span></div>
+    </div>
+  );
+}
+
+function FindingCard({ finding, expanded, onToggle }: { finding: Finding; expanded: boolean; onToggle: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(finding.snippet);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
+  return (
+    <article className={`finding-card finding-${finding.severity}`}>
+      <button className="finding-summary" onClick={onToggle} aria-expanded={expanded}>
+        <span className="severity-marker"><AlertIcon size={16} /></span>
+        <span className="finding-main">
+          <span className="finding-title-row">
+            <strong>{finding.title}</strong>
+            <span className={`severity-pill ${finding.severity}`}>{severityLabels[finding.severity]}</span>
+          </span>
+          <span className="finding-meta">
+            <code>{finding.ruleId}</code><span>{finding.cwe}</span><span>строка {finding.line}</span><span>уверенность: {finding.confidence === "high" ? "высокая" : "средняя"}</span>
+          </span>
+        </span>
+        <ChevronIcon className={expanded ? "chevron expanded" : "chevron"} size={18} />
+      </button>
+      {expanded && (
+        <div className="finding-details">
+          <p>{finding.description}</p>
+          <div className="code-snippet"><span>{finding.line}</span><code>{finding.snippet}</code><button onClick={copy} aria-label="Копировать фрагмент"><CopyIcon size={15} />{copied ? "Скопировано" : "Копировать"}</button></div>
+          <div className="recommendation"><CheckIcon size={17} /><div><strong>Как исправить</strong><p>{finding.recommendation}</p></div></div>
+          <a href={finding.references[0]} target="_blank" rel="noreferrer">Открыть описание {finding.cwe} ↗</a>
+        </div>
+      )}
+    </article>
+  );
+}
+
+export default function SastWorkspace() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const [code, setCode] = useState("");
+  const [filename, setFilename] = useState("");
+  const [fileSize, setFileSize] = useState(0);
+  const [language, setLanguage] = useState("auto");
+  const [dragging, setDragging] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [result, setResult] = useState<ScanResult | null>(null);
+  const [filter, setFilter] = useState<Severity | "all">("all");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [notice, setNotice] = useState("");
+
+  const loadFile = useCallback((file: File) => {
+    const extension = file.name.toLowerCase().split(".").pop() ?? "";
+    if (!acceptedExtensions.includes(extension)) {
+      setNotice("Этот формат пока не поддерживается. Выберите файл с исходным кодом.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setNotice("Файл больше 1 МБ. Для быстрого локального анализа выберите файл меньшего размера.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCode(String(reader.result ?? "")); setFilename(file.name); setFileSize(file.size);
+      setResult(null); setNotice("");
+    };
+    reader.onerror = () => setNotice("Не удалось прочитать файл. Попробуйте выбрать его ещё раз.");
+    reader.readAsText(file);
+  }, []);
+
+  const analyze = () => {
+    if (!code.trim()) { setNotice("Добавьте исходный код или загрузите файл, чтобы начать анализ."); return; }
+    setNotice(""); setScanning(true);
+    window.setTimeout(() => {
+      const next = scanCode(code, filename || "code.txt", language);
+      setResult(next); setExpanded(new Set(next.findings.slice(0, 2).map((finding) => finding.id)));
+      setFilter("all"); setScanning(false);
+      window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }, 560);
+  };
+
+  const clear = () => {
+    setCode(""); setFilename(""); setFileSize(0); setResult(null); setNotice("");
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const loadDemo = () => {
+    setCode(demoCode); setFilename("vulnerable-api.js"); setFileSize(new Blob([demoCode]).size);
+    setLanguage("auto"); setResult(null); setNotice("");
+  };
+
+  const exportReport = () => {
+    if (!result) return;
+    const report = { tool: "CodeSentry Local SAST", version: "1.0.0", scannedAt: new Date().toISOString(), file: filename || "code.txt", ...result };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${(filename || "scan").replace(/\.[^.]+$/, "")}-sast-report.json`;
+    link.click(); URL.revokeObjectURL(link.href);
+  };
+
+  const filteredFindings = useMemo(() => {
+    if (!result) return [];
+    return filter === "all" ? result.findings : result.findings.filter((finding) => finding.severity === filter);
+  }, [filter, result]);
+
+  return (
+    <main>
+      <header className="topbar">
+        <a className="brand" href="#top" aria-label="CodeSentry — главная"><span className="brand-mark"><ShieldIcon size={21} /></span><span>CODE<strong>SENTRY</strong></span><small>LOCAL SAST</small></a>
+        <div className="topbar-trust"><span className="status-dot" />Работает локально <span className="topbar-divider" /> Код не загружается в облако</div>
+        <a className="how-link" href="#how">Как это работает</a>
+      </header>
+
+      <section className="hero" id="top">
+        <div className="hero-eyebrow"><span>STATIC ANALYSIS</span><i />БЕЗОПАСНОСТЬ НАЧИНАЕТСЯ С КОДА</div>
+        <h1>Найдите уязвимость<br /><em>до того, как её найдут другие.</em></h1>
+        <p>Локальный статический анализ исходного кода. Быстрая проверка на критические уязвимости, секреты и небезопасные конструкции — без отправки файлов на сервер.</p>
+        <div className="hero-proof"><span><CheckIcon size={15} />8 языков</span><span><CheckIcon size={15} />19 правил безопасности</span><span><CheckIcon size={15} />CWE & OWASP</span></div>
+      </section>
+
+      <section className="workspace-shell" aria-label="Рабочая область анализатора">
+        <div className="workspace-heading"><div><span className="step-number">01</span><div><h2>Добавьте исходный код</h2><p>Загрузите файл или вставьте код вручную</p></div></div><span className="privacy-badge"><LockIcon size={14} />Только в вашем браузере</span></div>
+        <div className="input-grid">
+          <div className={`drop-zone ${dragging ? "dragging" : ""} ${filename ? "has-file" : ""}`}
+            onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()}
+            onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
+            onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) loadFile(file); }}>
+            <input ref={inputRef} type="file" accept={acceptedExtensions.map((ext) => `.${ext}`).join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) loadFile(file); }} />
+            {filename ? <div className="selected-file"><span className="file-icon"><FileIcon size={26} /></span><div><strong>{filename}</strong><span>{formatBytes(fileSize)} · готов к анализу</span></div><button onClick={(event) => { event.stopPropagation(); clear(); }} aria-label="Удалить файл"><CloseIcon size={17} /></button></div>
+              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл сюда</strong><span>или <u>выберите на компьютере</u></span><small>.js · .ts · .py · .java · .php · .go · .cs · .rb<br />до 1 МБ</small></button>}
+          </div>
+          <div className="code-panel">
+            <div className="code-toolbar"><div><CodeIcon size={16} /><span>{filename || "Вставьте код вручную"}</span></div>{code && <button onClick={clear}>Очистить</button>}</div>
+            <div className="editor-wrap"><div className="line-numbers" aria-hidden="true">{code.split("\n").map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea value={code} onChange={(event) => { setCode(event.target.value); setResult(null); if (!filename) setFilename("code.txt"); }} spellCheck={false} aria-label="Исходный код" placeholder={"// Вставьте код для проверки\n// или загрузите файл слева"} /></div>
+          </div>
+        </div>
+        {notice && <div className="notice" role="alert"><AlertIcon size={17} />{notice}</div>}
+        <div className="action-bar">
+          <label>Язык анализа<select value={language} onChange={(event) => setLanguage(event.target.value)}>{Object.entries(languageLabels).filter(([key]) => key !== "unknown").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <button className="demo-button" onClick={loadDemo}><CodeIcon size={16} />Загрузить пример</button>
+          <button className="scan-button" onClick={analyze} disabled={scanning}>{scanning ? <><span className="spinner" />Анализируем…</> : <><ScanIcon size={18} />Запустить проверку</>}</button>
+        </div>
+      </section>
+
+      {result && <section className="results" ref={resultsRef} aria-live="polite">
+        <div className="results-heading"><div><span className="step-number">02</span><div><h2>Результат анализа</h2><p>{filename || "code.txt"} · {languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />Экспорт JSON</button></div>
+        <div className="summary-grid">
+          <div className="score-card"><ScoreRing score={result.summary.score} /><div><span>Оценка безопасности</span><strong>{result.summary.score >= 85 ? "Хороший результат" : result.summary.score >= 60 ? "Требует внимания" : "Высокий риск"}</strong><p>На основе серьёзности и количества найденных проблем</p></div></div>
+          <div className="severity-card critical"><span>Критические</span><strong>{result.summary.critical}</strong><small>Исправить немедленно</small></div>
+          <div className="severity-card high"><span>Высокие</span><strong>{result.summary.high}</strong><small>Высокий приоритет</small></div>
+          <div className="severity-card medium"><span>Средние</span><strong>{result.summary.medium}</strong><small>Запланировать исправление</small></div>
+        </div>
+        <div className="findings-panel">
+          <div className="findings-toolbar"><div><h3>Найденные проблемы <span>{result.summary.total}</span></h3><p>Анализ завершён за {result.durationMs} мс</p></div><div className="filters" role="group" aria-label="Фильтр по серьёзности">{severities.map((severity) => {
+            const count = severity === "all" ? result.summary.total : result.summary[severity];
+            return <button key={severity} onClick={() => setFilter(severity)} className={filter === severity ? "active" : ""}>{severityLabels[severity]} <span>{count}</span></button>;
+          })}</div></div>
+          {filteredFindings.length ? <div className="finding-list">{filteredFindings.map((finding) => <FindingCard key={finding.id} finding={finding} expanded={expanded.has(finding.id)} onToggle={() => setExpanded((current) => { const next = new Set(current); if (next.has(finding.id)) next.delete(finding.id); else next.add(finding.id); return next; })} />)}</div>
+            : <div className="empty-findings"><span><CheckIcon size={28} /></span><h3>Проблем этой категории нет</h3><p>Попробуйте выбрать другой фильтр.</p></div>}
+        </div>
+        <div className="disclaimer"><AlertIcon size={16} /><p><strong>Важно:</strong> автоматический SAST-анализ не заменяет ручной аудит безопасности. Проверяйте контекст находок и дополняйте анализ dependency scanning, DAST и code review.</p></div>
+      </section>}
+
+      <section className="how" id="how"><div className="section-kicker">КАК ЭТО РАБОТАЕТ</div><h2>От кода до понятного решения</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте код</h3><p>Выберите файл или вставьте фрагмент. Данные остаются на устройстве.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите анализ</h3><p>Движок сопоставит код с набором правил безопасной разработки.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Исправьте риски</h3><p>Получите CWE, строку кода и конкретную рекомендацию для каждой находки.</p></article></div></section>
+      <footer><div className="brand"><span className="brand-mark"><ShieldIcon size={18} /></span><span>CODE<strong>SENTRY</strong></span></div><p>Локальный SAST для быстрой проверки исходного кода.</p><span>v1.0 · Анализ в браузере</span></footer>
+    </main>
+  );
+}
