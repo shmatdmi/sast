@@ -16,6 +16,7 @@ export type Finding = {
   references: string[];
   category: string;
   context?: string;
+  filename?: string;
 };
 
 export type ScanSummary = {
@@ -34,6 +35,7 @@ export type ScanResult = {
   durationMs: number;
   summary: ScanSummary;
   findings: Finding[];
+  filesScanned?: number;
 };
 
 type Rule = {
@@ -453,6 +455,7 @@ export const languageLabels: Record<string, string> = {
   shell: "Shell",
   config: "Конфигурация",
   unknown: "Универсальный",
+  multiple: "Несколько языков",
 };
 
 export function detectLanguage(filename: string, code: string): string {
@@ -609,5 +612,26 @@ export function scanCode(code: string, filename = "code.txt", selectedLanguage =
     durationMs: Math.max(1, Math.round(performance.now() - started)),
     summary,
     findings,
+  };
+}
+
+export function scanFiles(files: Array<{ name: string; code: string }>): ScanResult {
+  const started = performance.now();
+  const results = files.map((file) => scanCode(file.code, file.name, "auto"));
+  const findings = results.flatMap((result, fileIndex) => result.findings.map((finding) => ({
+    ...finding, id: `${fileIndex}-${finding.id}`, filename: files[fileIndex].name,
+  })));
+  const order: Record<Severity, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+  findings.sort((left, right) => order[left.severity] - order[right.severity]
+    || (left.filename ?? "").localeCompare(right.filename ?? "") || left.line - right.line);
+  const summary = findings.reduce<ScanSummary>((acc, finding) => {
+    acc.total += 1; acc[finding.severity] += 1; return acc;
+  }, { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0, score: 100 });
+  summary.score = calculateScore(findings);
+  const languages = new Set(results.map((result) => result.language));
+  return {
+    language: languages.size === 1 ? results[0]?.language ?? "unknown" : "multiple",
+    scannedLines: results.reduce((total, result) => total + result.scannedLines, 0),
+    durationMs: Math.max(1, Math.round(performance.now() - started)), summary, findings, filesScanned: files.length,
   };
 }

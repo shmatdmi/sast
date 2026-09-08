@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { detectLanguage, ruleCount, scanCode } from "../app/lib/sast-engine.ts";
+import { detectLanguage, ruleCount, scanCode, scanFiles } from "../app/lib/sast-engine.ts";
 
 test("detects supported languages by filename and content", () => {
   assert.equal(detectLanguage("service.py", "print('ok')"), "python");
@@ -87,4 +87,15 @@ test("finds security constructs spanning multiple lines", () => {
   const finding = scanCode(code, "Client.cs").findings.find((item) => item.ruleId === "CS002");
   assert.ok(finding);
   assert.equal(finding.line, 1);
+});
+
+test("aggregates findings from multiple files and preserves their paths", () => {
+  const result = scanFiles([
+    { name: "src/api.ts", code: "eval(req.query.code);" },
+    { name: "scripts/deploy.py", code: "password = 'production-secret'" },
+  ]);
+  assert.equal(result.filesScanned, 2);
+  assert.equal(result.language, "multiple");
+  assert.ok(result.findings.some((finding) => finding.filename === "src/api.ts"));
+  assert.ok(result.findings.some((finding) => finding.filename === "scripts/deploy.py"));
 });

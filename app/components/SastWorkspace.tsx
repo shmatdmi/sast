@@ -5,7 +5,10 @@ import {
   AlertIcon, CheckIcon, ChevronIcon, CloseIcon, CodeIcon, CopyIcon,
   DownloadIcon, FileIcon, LockIcon, ScanIcon, ShieldIcon, UploadIcon,
 } from "./icons";
-import { languageLabels, ruleCount, scanCode, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
+import { languageLabels, ruleCount, scanCode, scanFiles, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
+import {
+  acceptedSourceExtensions, extractZip, isSupportedSourceFile, MAX_ARCHIVE_BYTES, MAX_SOURCE_FILE_BYTES, type SourceFile,
+} from "../lib/archive";
 
 const demoCode = `const express = require('express');
 const { exec } = require('child_process');
@@ -29,11 +32,6 @@ app.post('/preview', (req, res) => {
   document.getElementById('preview').innerHTML = req.body.content;
 });`;
 
-const acceptedExtensions = [
-  "js", "jsx", "mjs", "cjs", "ts", "tsx", "py", "java", "php", "go", "cs", "rb",
-  "kt", "kts", "rs", "swift", "scala", "sh", "bash", "zsh", "json", "yaml", "yml", "xml", "env", "txt",
-];
-const acceptedNames = ["dockerfile"];
 const severities: Array<Severity | "all"> = ["all", "critical", "high", "medium", "low"];
 const severityLabels: Record<Severity | "all", string> = {
   all: "Все", critical: "Критические", high: "Высокие", medium: "Средние", low: "Низкие", info: "Инфо",
@@ -70,7 +68,7 @@ function FindingCard({ finding, expanded, onToggle }: { finding: Finding; expand
             <span className={`severity-pill ${finding.severity}`}>{severityLabels[finding.severity]}</span>
           </span>
           <span className="finding-meta">
-            <code>{finding.ruleId}</code><span>{finding.cwe}</span><span>{finding.category}</span><span>строка {finding.line}</span><span>уверенность: {finding.confidence === "high" ? "высокая" : "средняя"}</span>
+            <code>{finding.ruleId}</code>{finding.filename && <span className="finding-file">{finding.filename}</span>}<span>{finding.cwe}</span><span>{finding.category}</span><span>строка {finding.line}</span><span>уверенность: {finding.confidence === "high" ? "высокая" : "средняя"}</span>
           </span>
         </span>
         <ChevronIcon className={expanded ? "chevron expanded" : "chevron"} size={18} />
@@ -100,31 +98,38 @@ export default function SastWorkspace() {
   const [filter, setFilter] = useState<Severity | "all">("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState("");
+  const [archiveFiles, setArchiveFiles] = useState<SourceFile[]>([]);
+  const [archiveSkipped, setArchiveSkipped] = useState(0);
 
-  const loadFile = useCallback((file: File) => {
-    const extension = file.name.toLowerCase().split(".").pop() ?? "";
-    if (!acceptedExtensions.includes(extension) && !acceptedNames.includes(file.name.toLowerCase())) {
+  const loadFile = useCallback(async (file: File) => {
+    const isZip = file.name.toLowerCase().endsWith(".zip");
+    if (!isZip && !isSupportedSourceFile(file.name)) {
       setNotice("Этот формат пока не поддерживается. Выберите файл с исходным кодом.");
       return;
     }
-    if (file.size > 1024 * 1024) {
-      setNotice("Файл больше 1 МБ. Для быстрого локального анализа выберите файл меньшего размера.");
+    if ((!isZip && file.size > MAX_SOURCE_FILE_BYTES) || (isZip && file.size > MAX_ARCHIVE_BYTES)) {
+      setNotice(isZip ? "ZIP-архив больше 10 МБ." : "Файл больше 1 МБ. Для быстрого локального анализа выберите файл меньшего размера.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCode(String(reader.result ?? "")); setFilename(file.name); setFileSize(file.size);
-      setResult(null); setNotice("");
-    };
-    reader.onerror = () => setNotice("Не удалось прочитать файл. Попробуйте выбрать его ещё раз.");
-    reader.readAsText(file);
+    try {
+      if (isZip) {
+        const extracted = extractZip(new Uint8Array(await file.arrayBuffer()));
+        setArchiveFiles(extracted.files); setArchiveSkipped(extracted.skippedFiles);
+        setCode(extracted.files[0].code); setLanguage("auto");
+      } else {
+        setArchiveFiles([]); setArchiveSkipped(0); setCode(await file.text());
+      }
+      setFilename(file.name); setFileSize(file.size); setResult(null); setNotice("");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Не удалось прочитать файл. Попробуйте выбрать его ещё раз.");
+    }
   }, []);
 
   const analyze = () => {
-    if (!code.trim()) { setNotice("Добавьте исходный код или загрузите файл, чтобы начать анализ."); return; }
+    if (!(archiveFiles.length ? archiveFiles.some((file) => file.code.trim()) : code.trim())) { setNotice("Добавьте исходный код или загрузите файл, чтобы начать анализ."); return; }
     setNotice(""); setScanning(true);
     window.setTimeout(() => {
-      const next = scanCode(code, filename || "code.txt", language);
+      const next = archiveFiles.length ? scanFiles(archiveFiles) : scanCode(code, filename || "code.txt", language);
       setResult(next); setExpanded(new Set(next.findings.slice(0, 2).map((finding) => finding.id)));
       setFilter("all"); setScanning(false);
       window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
@@ -132,13 +137,13 @@ export default function SastWorkspace() {
   };
 
   const clear = () => {
-    setCode(""); setFilename(""); setFileSize(0); setResult(null); setNotice("");
+    setCode(""); setFilename(""); setFileSize(0); setResult(null); setNotice(""); setArchiveFiles([]); setArchiveSkipped(0);
     if (inputRef.current) inputRef.current.value = "";
   };
 
   const loadDemo = () => {
     setCode(demoCode); setFilename("vulnerable-api.js"); setFileSize(new Blob([demoCode]).size);
-    setLanguage("auto"); setResult(null); setNotice("");
+    setLanguage("auto"); setResult(null); setNotice(""); setArchiveFiles([]); setArchiveSkipped(0);
   };
 
   const exportReport = () => {
@@ -176,7 +181,7 @@ export default function SastWorkspace() {
           level: finding.severity === "critical" || finding.severity === "high" ? "error" : finding.severity === "medium" ? "warning" : "note",
           message: { text: finding.description + " " + finding.recommendation },
           locations: [{ physicalLocation: {
-            artifactLocation: { uri: filename || "code.txt" },
+            artifactLocation: { uri: finding.filename || filename || "code.txt" },
             region: { startLine: finding.line, startColumn: finding.column, snippet: { text: finding.snippet } },
           } }],
           properties: { severity: finding.severity, confidence: finding.confidence, cwe: finding.cwe, category: finding.category },
@@ -217,25 +222,25 @@ export default function SastWorkspace() {
             onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()}
             onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
             onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) loadFile(file); }}>
-            <input ref={inputRef} type="file" accept={acceptedExtensions.map((ext) => `.${ext}`).join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) loadFile(file); }} />
-            {filename ? <div className="selected-file"><span className="file-icon"><FileIcon size={26} /></span><div><strong>{filename}</strong><span>{formatBytes(fileSize)} · готов к анализу</span></div><button onClick={(event) => { event.stopPropagation(); clear(); }} aria-label="Удалить файл"><CloseIcon size={17} /></button></div>
-              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл сюда</strong><span>или <u>выберите на компьютере</u></span><small>исходный код · конфигурации · Dockerfile<br />до 1 МБ</small></button>}
+            <input ref={inputRef} type="file" accept={[".zip", ...acceptedSourceExtensions.map((ext) => `.${ext}`)].join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadFile(file); }} />
+            {filename ? <div className="selected-file"><span className="file-icon"><FileIcon size={26} /></span><div><strong>{filename}</strong><span>{archiveFiles.length ? `${archiveFiles.length} файлов с кодом${archiveSkipped ? ` · пропущено ${archiveSkipped}` : ""}` : `${formatBytes(fileSize)} · готов к анализу`}</span></div><button onClick={(event) => { event.stopPropagation(); clear(); }} aria-label="Удалить файл"><CloseIcon size={17} /></button></div>
+              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл или ZIP сюда</strong><span>или <u>выберите на компьютере</u></span><small>исходный код до 1 МБ · ZIP-архив до 10 МБ<br />до 500 файлов, распаковка локально</small></button>}
           </div>
           <div className="code-panel">
-            <div className="code-toolbar"><div><CodeIcon size={16} /><span>{filename || "Вставьте код вручную"}</span></div>{code && <button onClick={clear}>Очистить</button>}</div>
-            <div className="editor-wrap"><div className="line-numbers" aria-hidden="true">{code.split("\n").map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea value={code} onChange={(event) => { setCode(event.target.value); setResult(null); if (!filename) setFilename("code.txt"); }} spellCheck={false} aria-label="Исходный код" placeholder={"// Вставьте код для проверки\n// или загрузите файл слева"} /></div>
+            <div className="code-toolbar"><div><CodeIcon size={16} /><span>{archiveFiles.length ? `Предпросмотр: ${archiveFiles[0].name}` : filename || "Вставьте код вручную"}</span></div>{code && <button onClick={clear}>Очистить</button>}</div>
+            <div className="editor-wrap"><div className="line-numbers" aria-hidden="true">{code.split("\n").map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea value={code} readOnly={archiveFiles.length > 0} onChange={(event) => { setCode(event.target.value); setArchiveFiles([]); setArchiveSkipped(0); setResult(null); if (!filename) setFilename("code.txt"); }} spellCheck={false} aria-label="Исходный код" placeholder={"// Вставьте код для проверки\n// или загрузите файл слева"} /></div>
           </div>
         </div>
         {notice && <div className="notice" role="alert"><AlertIcon size={17} />{notice}</div>}
         <div className="action-bar">
-          <label>Язык анализа<select value={language} onChange={(event) => setLanguage(event.target.value)}>{Object.entries(languageLabels).filter(([key]) => key !== "unknown").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label>Язык анализа<select value={language} disabled={archiveFiles.length > 0} onChange={(event) => setLanguage(event.target.value)}>{Object.entries(languageLabels).filter(([key]) => key !== "unknown" && key !== "multiple").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <button className="demo-button" onClick={loadDemo}><CodeIcon size={16} />Загрузить пример</button>
           <button className="scan-button" onClick={analyze} disabled={scanning}>{scanning ? <><span className="spinner" />Анализируем…</> : <><ScanIcon size={18} />Запустить проверку</>}</button>
         </div>
       </section>
 
       {result && <section className="results" ref={resultsRef} aria-live="polite">
-        <div className="results-heading"><div><span className="step-number">02</span><div><h2>Результат анализа</h2><p>{filename || "code.txt"} · {languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
+        <div className="results-heading"><div><span className="step-number">02</span><div><h2>Результат анализа</h2><p>{filename || "code.txt"} · {result.filesScanned ? `${result.filesScanned} файлов · ` : ""}{languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
         <div className="summary-grid">
           <div className="score-card"><ScoreRing score={result.summary.score} /><div><span>Оценка безопасности</span><strong>{result.summary.score >= 85 ? "Хороший результат" : result.summary.score >= 60 ? "Требует внимания" : "Высокий риск"}</strong><p>На основе серьёзности и количества найденных проблем</p></div></div>
           <div className="severity-card critical"><span>Критические</span><strong>{result.summary.critical}</strong><small>Исправить немедленно</small></div>
@@ -253,7 +258,7 @@ export default function SastWorkspace() {
         <div className="disclaimer"><AlertIcon size={16} /><p><strong>Важно:</strong> автоматический SAST-анализ не заменяет ручной аудит безопасности. Проверяйте контекст находок и дополняйте анализ dependency scanning, DAST и code review.</p></div>
       </section>}
 
-      <section className="how" id="how"><div className="section-kicker">КАК ЭТО РАБОТАЕТ</div><h2>От кода до понятного решения</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте код</h3><p>Выберите файл или вставьте фрагмент. Данные остаются на устройстве.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите анализ</h3><p>Движок сопоставит код с набором правил безопасной разработки.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Исправьте риски</h3><p>Получите CWE, строку кода и конкретную рекомендацию для каждой находки.</p></article></div></section>
+      <section className="how" id="how"><div className="section-kicker">КАК ЭТО РАБОТАЕТ</div><h2>От кода до понятного решения</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте код</h3><p>Выберите файл, ZIP-архив проекта или вставьте фрагмент. Данные остаются на устройстве.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите анализ</h3><p>Движок сопоставит код с набором правил безопасной разработки.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Исправьте риски</h3><p>Получите CWE, файл, строку кода и конкретную рекомендацию для каждой находки.</p></article></div></section>
       <footer><div className="brand"><span className="brand-mark"><ShieldIcon size={18} /></span><span>CODE<strong>SENTRY</strong></span></div><p>Локальный SAST для быстрой проверки исходного кода.</p><span>v1.0 · Анализ в браузере</span></footer>
     </main>
   );
