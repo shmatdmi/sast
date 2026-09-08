@@ -5,7 +5,7 @@ import {
   AlertIcon, CheckIcon, ChevronIcon, CloseIcon, CodeIcon, CopyIcon,
   DownloadIcon, FileIcon, LockIcon, ScanIcon, ShieldIcon, UploadIcon,
 } from "./icons";
-import { languageLabels, scanCode, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
+import { languageLabels, ruleCount, scanCode, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
 
 const demoCode = `const express = require('express');
 const { exec } = require('child_process');
@@ -29,7 +29,11 @@ app.post('/preview', (req, res) => {
   document.getElementById('preview').innerHTML = req.body.content;
 });`;
 
-const acceptedExtensions = ["js", "jsx", "mjs", "cjs", "ts", "tsx", "py", "java", "php", "go", "cs", "rb", "txt"];
+const acceptedExtensions = [
+  "js", "jsx", "mjs", "cjs", "ts", "tsx", "py", "java", "php", "go", "cs", "rb",
+  "kt", "kts", "rs", "swift", "scala", "sh", "bash", "zsh", "json", "yaml", "yml", "xml", "env", "txt",
+];
+const acceptedNames = ["dockerfile"];
 const severities: Array<Severity | "all"> = ["all", "critical", "high", "medium", "low"];
 const severityLabels: Record<Severity | "all", string> = {
   all: "Все", critical: "Критические", high: "Высокие", medium: "Средние", low: "Низкие", info: "Инфо",
@@ -66,7 +70,7 @@ function FindingCard({ finding, expanded, onToggle }: { finding: Finding; expand
             <span className={`severity-pill ${finding.severity}`}>{severityLabels[finding.severity]}</span>
           </span>
           <span className="finding-meta">
-            <code>{finding.ruleId}</code><span>{finding.cwe}</span><span>строка {finding.line}</span><span>уверенность: {finding.confidence === "high" ? "высокая" : "средняя"}</span>
+            <code>{finding.ruleId}</code><span>{finding.cwe}</span><span>{finding.category}</span><span>строка {finding.line}</span><span>уверенность: {finding.confidence === "high" ? "высокая" : "средняя"}</span>
           </span>
         </span>
         <ChevronIcon className={expanded ? "chevron expanded" : "chevron"} size={18} />
@@ -99,7 +103,7 @@ export default function SastWorkspace() {
 
   const loadFile = useCallback((file: File) => {
     const extension = file.name.toLowerCase().split(".").pop() ?? "";
-    if (!acceptedExtensions.includes(extension)) {
+    if (!acceptedExtensions.includes(extension) && !acceptedNames.includes(file.name.toLowerCase())) {
       setNotice("Этот формат пока не поддерживается. Выберите файл с исходным кодом.");
       return;
     }
@@ -147,6 +151,45 @@ export default function SastWorkspace() {
     link.click(); URL.revokeObjectURL(link.href);
   };
 
+  const exportSarif = () => {
+    if (!result) return;
+    const uniqueRules = [...new Map(result.findings.map((finding) => [finding.ruleId, finding])).values()];
+    const report = {
+      version: "2.1.0",
+      $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+      runs: [{
+        tool: { driver: {
+          name: "CodeSentry Local SAST",
+          version: "2.0.0",
+          informationUri: "https://github.com/shmatdmi/sast",
+          rules: uniqueRules.map((finding) => ({
+            id: finding.ruleId,
+            name: finding.title,
+            shortDescription: { text: finding.title },
+            fullDescription: { text: finding.description },
+            helpUri: finding.references[0],
+            properties: { tags: [finding.cwe, finding.owasp, finding.category] },
+          })),
+        } },
+        results: result.findings.map((finding) => ({
+          ruleId: finding.ruleId,
+          level: finding.severity === "critical" || finding.severity === "high" ? "error" : finding.severity === "medium" ? "warning" : "note",
+          message: { text: finding.description + " " + finding.recommendation },
+          locations: [{ physicalLocation: {
+            artifactLocation: { uri: filename || "code.txt" },
+            region: { startLine: finding.line, startColumn: finding.column, snippet: { text: finding.snippet } },
+          } }],
+          properties: { severity: finding.severity, confidence: finding.confidence, cwe: finding.cwe, category: finding.category },
+        })),
+      }],
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/sarif+json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${(filename || "scan").replace(/\.[^.]+$/, "")}.sarif`;
+    link.click(); URL.revokeObjectURL(link.href);
+  };
+
   const filteredFindings = useMemo(() => {
     if (!result) return [];
     return filter === "all" ? result.findings : result.findings.filter((finding) => finding.severity === filter);
@@ -164,7 +207,7 @@ export default function SastWorkspace() {
         <div className="hero-eyebrow"><span>STATIC ANALYSIS</span><i />БЕЗОПАСНОСТЬ НАЧИНАЕТСЯ С КОДА</div>
         <h1>Найдите уязвимость<br /><em>до того, как её найдут другие.</em></h1>
         <p>Локальный статический анализ исходного кода. Быстрая проверка на критические уязвимости, секреты и небезопасные конструкции — без отправки файлов на сервер.</p>
-        <div className="hero-proof"><span><CheckIcon size={15} />8 языков</span><span><CheckIcon size={15} />19 правил безопасности</span><span><CheckIcon size={15} />CWE & OWASP</span></div>
+        <div className="hero-proof"><span><CheckIcon size={15} />14 языков и форматов</span><span><CheckIcon size={15} />{ruleCount} правил безопасности</span><span><CheckIcon size={15} />CWE · OWASP · SARIF</span></div>
       </section>
 
       <section className="workspace-shell" aria-label="Рабочая область анализатора">
@@ -176,7 +219,7 @@ export default function SastWorkspace() {
             onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) loadFile(file); }}>
             <input ref={inputRef} type="file" accept={acceptedExtensions.map((ext) => `.${ext}`).join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) loadFile(file); }} />
             {filename ? <div className="selected-file"><span className="file-icon"><FileIcon size={26} /></span><div><strong>{filename}</strong><span>{formatBytes(fileSize)} · готов к анализу</span></div><button onClick={(event) => { event.stopPropagation(); clear(); }} aria-label="Удалить файл"><CloseIcon size={17} /></button></div>
-              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл сюда</strong><span>или <u>выберите на компьютере</u></span><small>.js · .ts · .py · .java · .php · .go · .cs · .rb<br />до 1 МБ</small></button>}
+              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл сюда</strong><span>или <u>выберите на компьютере</u></span><small>исходный код · конфигурации · Dockerfile<br />до 1 МБ</small></button>}
           </div>
           <div className="code-panel">
             <div className="code-toolbar"><div><CodeIcon size={16} /><span>{filename || "Вставьте код вручную"}</span></div>{code && <button onClick={clear}>Очистить</button>}</div>
@@ -192,7 +235,7 @@ export default function SastWorkspace() {
       </section>
 
       {result && <section className="results" ref={resultsRef} aria-live="polite">
-        <div className="results-heading"><div><span className="step-number">02</span><div><h2>Результат анализа</h2><p>{filename || "code.txt"} · {languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />Экспорт JSON</button></div>
+        <div className="results-heading"><div><span className="step-number">02</span><div><h2>Результат анализа</h2><p>{filename || "code.txt"} · {languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
         <div className="summary-grid">
           <div className="score-card"><ScoreRing score={result.summary.score} /><div><span>Оценка безопасности</span><strong>{result.summary.score >= 85 ? "Хороший результат" : result.summary.score >= 60 ? "Требует внимания" : "Высокий риск"}</strong><p>На основе серьёзности и количества найденных проблем</p></div></div>
           <div className="severity-card critical"><span>Критические</span><strong>{result.summary.critical}</strong><small>Исправить немедленно</small></div>
