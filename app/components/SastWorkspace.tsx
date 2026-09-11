@@ -201,22 +201,35 @@ export default function SastWorkspace() {
   }, [filter, result]);
 
   return (
-    <main>
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="CodeSentry — главная"><span className="brand-mark"><ShieldIcon size={21} /></span><span>CODE<strong>SENTRY</strong></span><small>LOCAL SAST</small></a>
-        <div className="topbar-trust"><span className="status-dot" />Работает локально <span className="topbar-divider" /> Код не загружается в облако</div>
-        <a className="how-link" href="#how">Как это работает</a>
-      </header>
-
-      <section className="hero" id="top">
-        <div className="hero-eyebrow"><span>STATIC ANALYSIS</span><i />БЕЗОПАСНОСТЬ НАЧИНАЕТСЯ С КОДА</div>
-        <h1>Найдите уязвимость<br /><em>до того, как её найдут другие.</em></h1>
-        <p>Локальный статический анализ исходного кода. Быстрая проверка на критические уязвимости, секреты и небезопасные конструкции — без отправки файлов на сервер.</p>
-        <div className="hero-proof"><span><CheckIcon size={15} />14 языков и форматов</span><span><CheckIcon size={15} />{ruleCount} правил безопасности</span><span><CheckIcon size={15} />CWE · OWASP · SARIF</span></div>
-      </section>
-
-      <section className="workspace-shell" aria-label="Рабочая область анализатора">
-        <div className="workspace-heading"><div><span className="step-number">01</span><div><h2>Добавьте исходный код</h2><p>Загрузите файл или вставьте код вручную</p></div></div><span className="privacy-badge"><LockIcon size={14} />Только в вашем браузере</span></div>
+    <main className="app-shell" id="top">
+      <aside className="sidebar" aria-label="Основная навигация">
+        <a className="brand" href="#top"><span className="brand-mark"><ShieldIcon size={20} /></span><span>CODE<strong>SENTRY</strong></span></a>
+        <nav>
+          <a className="active" href="#overview"><ScanIcon size={17} /><span>Обзор</span></a>
+          <a href="#scanner"><CodeIcon size={17} /><span>Сканер</span></a>
+          <a href="#findings"><AlertIcon size={17} /><span>Находки</span>{result && <b>{result.summary.total}</b>}</a>
+          <a href="#how"><FileIcon size={17} /><span>Справка</span></a>
+        </nav>
+        <div className="sidebar-status"><span className="status-dot" /><div><strong>Движок активен</strong><small>Локальный режим</small></div></div>
+        <div className="sidebar-version">v1.0.0</div>
+      </aside>
+      <div className="app-main">
+        <header className="topbar">
+          <div className="breadcrumbs"><span>CodeSentry</span><i>/</i><strong>Security overview</strong></div>
+          <div className="topbar-actions"><span className="privacy-badge"><LockIcon size={14} />Код не загружается в облако</span><a className="how-link" href="#how">Документация</a></div>
+        </header>
+        <div className="dashboard-content">
+          <section className="overview" id="overview">
+            <div className="page-heading"><div><span className="eyebrow">SECURITY CONTROL CENTER</span><h1>Обзор безопасности</h1><p>Запустите локальный SAST-анализ и получите карту рисков исходного кода.</p></div><button className="primary-cta" onClick={() => document.getElementById("scanner")?.scrollIntoView({ behavior: "smooth" })}><ScanIcon size={17} />Новый анализ</button></div>
+            <div className="overview-grid">
+              <article className="stat-panel accent"><div className="panel-label"><span>Статус защиты</span><span className="live-badge">LIVE</span></div><strong>{result ? (result.summary.score >= 85 ? "Стабильно" : result.summary.score >= 60 ? "Внимание" : "Высокий риск") : "Готов к работе"}</strong><div className="spark-bars" aria-hidden="true">{[34,48,40,65,58,76,69,82,78,91,86,96].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div><small>Анализ выполняется полностью на устройстве</small></article>
+              <article className="stat-panel"><div className="panel-label"><span>Правила</span><ShieldIcon size={15} /></div><strong>{ruleCount}</strong><div className="stat-delta positive">● актуальная база</div><small>CWE и OWASP-категории</small></article>
+              <article className="stat-panel"><div className="panel-label"><span>Охват</span><CodeIcon size={15} /></div><strong>14</strong><div className="stat-delta">языков и форматов</div><small>Исходники и ZIP-проекты</small></article>
+              <article className="stat-panel"><div className="panel-label"><span>Последний скан</span><FileIcon size={15} /></div><strong>{result ? `${result.durationMs} мс` : "—"}</strong><div className="stat-delta">{result ? `${result.scannedLines} строк` : "ожидает запуска"}</div><small>{result ? filename || "code.txt" : "Нет истории отправки данных"}</small></article>
+            </div>
+          </section>
+          <section className="workspace-shell" id="scanner" aria-label="Рабочая область анализатора">
+            <div className="panel-header"><div><span className="panel-dot" /><div><h2>Новый анализ</h2><p>Источник и конфигурация сканирования</p></div></div><span className="panel-time">LOCAL / READY</span></div>
         <div className="input-grid">
           <div className={`drop-zone ${dragging ? "dragging" : ""} ${filename ? "has-file" : ""}`}
             onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()}
@@ -237,10 +250,10 @@ export default function SastWorkspace() {
           <button className="demo-button" onClick={loadDemo}><CodeIcon size={16} />Загрузить пример</button>
           <button className="scan-button" onClick={analyze} disabled={scanning}>{scanning ? <><span className="spinner" />Анализируем…</> : <><ScanIcon size={18} />Запустить проверку</>}</button>
         </div>
-      </section>
+          </section>
 
-      {result && <section className="results" ref={resultsRef} aria-live="polite">
-        <div className="results-heading"><div><span className="step-number">02</span><div><h2>Результат анализа</h2><p>{filename || "code.txt"} · {result.filesScanned ? `${result.filesScanned} файлов · ` : ""}{languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
+      {result && <section className="results" id="findings" ref={resultsRef} aria-live="polite">
+        <div className="results-heading"><div><span className="panel-dot warning" /><div><h2>Результат анализа</h2><p>{filename || "code.txt"} · {result.filesScanned ? `${result.filesScanned} файлов · ` : ""}{languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
         <div className="summary-grid">
           <div className="score-card"><ScoreRing score={result.summary.score} /><div><span>Оценка безопасности</span><strong>{result.summary.score >= 85 ? "Хороший результат" : result.summary.score >= 60 ? "Требует внимания" : "Высокий риск"}</strong><p>На основе серьёзности и количества найденных проблем</p></div></div>
           <div className="severity-card critical"><span>Критические</span><strong>{result.summary.critical}</strong><small>Исправить немедленно</small></div>
@@ -258,8 +271,10 @@ export default function SastWorkspace() {
         <div className="disclaimer"><AlertIcon size={16} /><p><strong>Важно:</strong> автоматический SAST-анализ не заменяет ручной аудит безопасности. Проверяйте контекст находок и дополняйте анализ dependency scanning, DAST и code review.</p></div>
       </section>}
 
-      <section className="how" id="how"><div className="section-kicker">КАК ЭТО РАБОТАЕТ</div><h2>От кода до понятного решения</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте код</h3><p>Выберите файл, ZIP-архив проекта или вставьте фрагмент. Данные остаются на устройстве.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите анализ</h3><p>Движок сопоставит код с набором правил безопасной разработки.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Исправьте риски</h3><p>Получите CWE, файл, строку кода и конкретную рекомендацию для каждой находки.</p></article></div></section>
-      <footer><div className="brand"><span className="brand-mark"><ShieldIcon size={18} /></span><span>CODE<strong>SENTRY</strong></span></div><p>Локальный SAST для быстрой проверки исходного кода.</p><span>v1.0 · Анализ в браузере</span></footer>
+          <section className="how" id="how"><div className="section-kicker">РАБОЧИЙ ПРОЦЕСС</div><h2>От исходника до исправления</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте источник</h3><p>Файл, ZIP-проект или фрагмент кода остаётся внутри браузера.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите движок</h3><p>Правила безопасной разработки проверят каждую строку локально.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Устраните риски</h3><p>Используйте CWE, точную строку и рекомендацию для каждой находки.</p></article></div></section>
+          <footer><p>CodeSentry Local SAST</p><span>Система работает штатно</span><span className="footer-status"><i />LOCAL</span></footer>
+        </div>
+      </div>
     </main>
   );
 }
