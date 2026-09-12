@@ -9,8 +9,10 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sast-engine.test.ts tests/archive.test.ts",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sast-engine.test.ts tests/archive.test.ts tests/additional.test.ts",
+    "test:coverage": "node --experimental-test-coverage --test-coverage-include=app/lib/archive.ts --test-coverage-include=app/lib/sast-engine.ts --test tests/sast-engine.test.ts tests/archive.test.ts tests/additional.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp",
+    "check": "npm run lint && npm test",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

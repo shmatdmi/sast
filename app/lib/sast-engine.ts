@@ -384,7 +384,7 @@ addRule("PY010", ["python"], "Слабое хеширование пароля",
   /(?:md5|sha1|sha256)\s*\([^\n]*(?:password|passwd)|hashlib\.(?:md5|sha1|sha256)\s*\([^\n]*(?:password|passwd)/i, "Используйте Argon2id, scrypt или bcrypt с уникальной солью.", { confidence: "medium", category: "crypto" });
 
 addRule("JAVA002", ["java", "kotlin"], "Небезопасная Java-десериализация", "ObjectInputStream может создать опасную цепочку объектов.", "critical", "CWE-502",
-  /\b(?:new\s+ObjectInputStream|\.readObject\s*\()/, "Откажитесь от native serialization или применяйте строгий JEP 290 allowlist.", { category: "deserialization" });
+  /\b(?:(?:new\s+)?ObjectInputStream\s*\(|\.readObject\s*\()/, "Откажитесь от native serialization или применяйте строгий JEP 290 allowlist.", { category: "deserialization" });
 addRule("JAVA003", ["java", "kotlin"], "XXE в XML parser", "XML factory создаётся без видимого запрета DTD и внешних сущностей.", "high", "CWE-611",
   /(?:DocumentBuilderFactory|SAXParserFactory|XMLInputFactory)\.newInstance\s*\(/, "Запретите DTD и внешние сущности; включите secure processing.", { confidence: "medium", category: "xxe" });
 addRule("JAVA004", ["java", "kotlin"], "Отключена проверка hostname", "HostnameVerifier безусловно принимает имя узла.", "high", "CWE-297",
