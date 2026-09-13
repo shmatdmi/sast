@@ -144,7 +144,7 @@ const rules: Rule[] = [
     id: "JS005",
     languages: ["javascript", "typescript"],
     title: "Слабый генератор случайных значений",
-    description: "Math.random() непригоден для токенов, идентификаторов сессий и других security-sensitive значений.",
+    description: "Некриптографический генератор непригоден для токенов, идентификаторов сессий и других security-sensitive значений.",
     severity: "medium",
     cwe: "CWE-338",
     owasp: "A02:2021",

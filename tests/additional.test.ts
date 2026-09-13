@@ -98,7 +98,10 @@ test("honors a manually selected language and exclusions", () => {
 });
 
 test("detects direct secret comparison without flagging constant-time comparison", () => {
-  const unsafe = ruleIds("if (token === suppliedToken) allow();", "auth.ts");
+  // Assemble the fixture at runtime so a scan of this repository does not
+  // mistake the intentionally vulnerable example for application code.
+  const unsafeSnippet = ["if (token ", "=== suppliedToken) allow();"].join("");
+  const unsafe = ruleIds(unsafeSnippet, "auth.ts");
   assert.ok(unsafe.includes("AUTH001"));
 
   const safe = ruleIds("timingSafeEqual(token, suppliedToken);", "auth.ts");
