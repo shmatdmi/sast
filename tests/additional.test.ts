@@ -105,6 +105,11 @@ test("detects direct secret comparison without flagging constant-time comparison
   assert.ok(!safe.includes("AUTH001"));
 });
 
+test("does not confuse PostgreSQL driver setup with a request-controlled path", () => {
+  const findings = ruleIds('db, err := sql.Open("postgres", databaseURL)', "main.go");
+  assert.ok(!findings.includes("PATH001"));
+});
+
 test("tracks user input into sensitive operations and aggregates files", () => {
   const sql = scanCode(
     "const value = req.query.value;\naudit.log('request');\ndb.query(value);",

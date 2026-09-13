@@ -254,7 +254,7 @@ const rules: Rule[] = [
     cwe: "CWE-22",
     owasp: "A01:2021",
     confidence: "medium",
-    pattern: /(?:readFile|readFileSync|sendFile|open|FileInputStream|file_get_contents)\s*\([^)]*(?:req\.|request\.|params|query|argv|GET|POST)/i,
+    pattern: /\b(?:readFile|readFileSync|sendFile|open|FileInputStream|file_get_contents)\s*\([^)]*(?:\breq\.|\brequest\.|\bparams\b|\bquery\b|\bargv\b|\$_?(?:GET|POST)\b)/i,
     recommendation: "Нормализуйте путь, разрешайте только ожидаемые имена и проверяйте, что результат остаётся внутри фиксированной базовой директории.",
     references: ["https://cwe.mitre.org/data/definitions/22.html"],
   },
