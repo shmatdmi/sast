@@ -6,31 +6,10 @@ import {
   DownloadIcon, FileIcon, LockIcon, ScanIcon, ShieldIcon, UploadIcon,
 } from "./icons";
 import { languageLabels, ruleCount, scanCode, scanFiles, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
+import { demoCode } from "../lib/demo-code";
 import {
   acceptedSourceExtensions, extractZip, isSupportedSourceFile, MAX_ARCHIVE_BYTES, MAX_SOURCE_FILE_BYTES, type SourceFile,
 } from "../lib/archive";
-
-const demoCode = `const express = require('express');
-const { exec } = require('child_process');
-const app = express();
-
-const API_KEY = "sk_live_51N8exampleSecretKey";
-
-app.get('/users', async (req, res) => {
-  const query = "SELECT * FROM users WHERE name = '" + req.query.name + "'";
-  const users = await db.query(query);
-  res.json(users);
-});
-
-app.get('/diagnostics', (req, res) => {
-  exec(\`ping -c 1 \${req.query.host}\`, (error, stdout) => {
-    res.send(stdout);
-  });
-});
-
-app.post('/preview', (req, res) => {
-  document.getElementById('preview').innerHTML = req.body.content;
-});`;
 
 const severities: Array<Severity | "all"> = ["all", "critical", "high", "medium", "low"];
 const severityLabels: Record<Severity | "all", string> = {
