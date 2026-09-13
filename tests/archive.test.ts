@@ -15,6 +15,17 @@ test("extracts supported source files and skips dependencies and binary content"
   assert.equal(result.skippedFiles, 2);
 });
 
+test("skips generated SAST reports and temporary fixtures", () => {
+  const archive = zipSync({
+    "src/index.ts": strToU8("export const safe = true;"),
+    "project-sast-report.json": strToU8('{"findings": [{"snippet": "eval(input)"}]}'),
+    "tmp/repro.js": strToU8("eval(input)"),
+  });
+  const result = extractZip(archive);
+  assert.deepEqual(result.files.map((file) => file.name), ["src/index.ts"]);
+  assert.equal(result.skippedFiles, 2);
+});
+
 test("rejects traversal paths in ZIP archives", () => {
   const archive = zipSync({ "../outside.js": strToU8("eval(input)") });
   assert.throws(() => extractZip(archive), /Небезопасный путь/);

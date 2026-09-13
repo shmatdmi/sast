@@ -32,7 +32,11 @@ const worker = {
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
-        fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
+        fetchAsset: (path) => {
+          const assetUrl = new URL(path, url.origin);
+          if (assetUrl.origin !== url.origin) throw new Error("Cross-origin image sources are not allowed");
+          return env.ASSETS.fetch(new Request(assetUrl));
+        },
         transformImage: async (body, { width, format, quality }) => {
           const result = await env.IMAGES.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
           return result.response();

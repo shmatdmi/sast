@@ -5,7 +5,8 @@ export const acceptedSourceExtensions = [
   "kt", "kts", "rs", "swift", "scala", "sh", "bash", "zsh", "json", "yaml", "yml", "xml", "env", "txt",
 ];
 const acceptedSourceNames = ["dockerfile"];
-const ignoredDirectories = new Set([".git", "node_modules", "vendor", "dist", "build", ".next", ".vinext"]);
+const ignoredDirectories = new Set([".git", "node_modules", "vendor", "dist", "build", ".next", ".vinext", "tmp"]);
+const generatedReportPattern = /-sast-report\.json$/i;
 
 export const MAX_SOURCE_FILE_BYTES = 1024 * 1024;
 export const MAX_ARCHIVE_BYTES = 10 * 1024 * 1024;
@@ -25,7 +26,9 @@ function isSafeArchivePath(name: string) {
   return !normalized.startsWith("/") && !/^[a-z]:\//i.test(normalized) && !normalized.split("/").includes("..");
 }
 function isIgnoredPath(name: string) {
-  return name.replace(/\\/g, "/").split("/").some((part) => ignoredDirectories.has(part.toLowerCase()));
+  const parts = name.replace(/\\/g, "/").split("/");
+  const basename = parts.at(-1) ?? "";
+  return generatedReportPattern.test(basename) || parts.some((part) => ignoredDirectories.has(part.toLowerCase()));
 }
 function looksBinary(data: Uint8Array) {
   const length = Math.min(data.length, 8_000);
