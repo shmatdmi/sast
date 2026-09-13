@@ -70,6 +70,46 @@ test("representative rules work across language families", () => {
   }
 });
 
+test("detects expanded Java, Go and Python security rules", () => {
+  const cases = [
+    ["tempfile.mktemp()", "app.py", "PY011"],
+    ["tarfile.open(name).extractall(target)", "app.py", "PY012"],
+    ["mark_safe(user_html)", "app.py", "PY013"],
+    ["jwt.decode(token, options={\"verify_signature\": False})", "app.py", "PY014"],
+    ["hashlib.md5(payload).hexdigest()", "app.py", "PY015"],
+    ["logger.info(\"token=%s\", token)", "app.py", "PY016"],
+    ["engine.eval(userCode);", "App.java", "JAVA005"],
+    ["new Random();", "App.java", "JAVA006"],
+    ["void checkServerTrusted(X509Certificate[] chain, String authType) {}", "App.java", "JAVA007"],
+    ["statement.executeQuery(\"SELECT * FROM users WHERE id=\" + id);", "App.java", "JAVA008"],
+    ["new File(base, request.getParameter(\"name\"));", "App.java", "JAVA009"],
+    ["MessageDigest.getInstance(\"SHA-1\");", "App.java", "JAVA010"],
+    ["md5.Sum(payload)", "main.go", "GO004"],
+    ["http.ListenAndServe(\":8080\", handler)", "main.go", "GO005"],
+    ["os.WriteFile(name, data, 0777)", "main.go", "GO006"],
+    ["parser.ParseUnverified(token, claims)", "main.go", "GO007"],
+    ["filepath.Join(base, r.URL.Query().Get(\"file\"))", "main.go", "GO008"],
+    ["db.Query(fmt.Sprintf(\"SELECT * FROM users WHERE id=%s\", id))", "main.go", "GO009"],
+  ];
+  for (const [code, filename, ruleId] of cases) {
+    assert.ok(ruleIds(code, filename).includes(ruleId), filename + " -> " + ruleId);
+  }
+});
+
+test("expanded language rules preserve common safe alternatives", () => {
+  const safeCases = [
+    ["tempfile.NamedTemporaryFile()", "safe.py", "PY011"],
+    ["hashlib.sha256(payload).hexdigest()", "safe.py", "PY015"],
+    ["new SecureRandom();", "Safe.java", "JAVA006"],
+    ["MessageDigest.getInstance(\"SHA-256\");", "Safe.java", "JAVA010"],
+    ["sha256.Sum256(payload)", "safe.go", "GO004"],
+    ["http.ListenAndServeTLS(\":443\", \"cert.pem\", \"key.pem\", handler)", "safe.go", "GO005"],
+  ];
+  for (const [code, filename, ruleId] of safeCases) {
+    assert.ok(!ruleIds(code, filename).includes(ruleId), filename + " unexpectedly matched " + ruleId);
+  }
+});
+
 test("normalizes line endings and returns a stable finding contract", () => {
   const result = scanCode("const safe = true;\r\neval(value);", "app.js");
   const finding = result.findings.find((item) => item.ruleId === "JS001");

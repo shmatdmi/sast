@@ -383,12 +383,38 @@ addRule("PY009", ["python"], "Небезопасный XML-парсер", "Ст�
 addRule("PY010", ["python"], "Слабое хеширование пароля", "Пароль хешируется быстрым общим алгоритмом.", "high", "CWE-916",
   /(?:md5|sha1|sha256)\s*\([^\n]*(?:password|passwd)|hashlib\.(?:md5|sha1|sha256)\s*\([^\n]*(?:password|passwd)/i, "Используйте Argon2id, scrypt или bcrypt с уникальной солью.", { confidence: "medium", category: "crypto" });
 
+addRule("PY011", ["python"], "Небезопасный временный файл", "tempfile.mktemp создаёт имя отдельно от открытия файла и допускает race condition.", "medium", "CWE-377",
+  /\btempfile\.mktemp\s*\(/, "Используйте NamedTemporaryFile или mkstemp и сохраняйте открытый файловый дескриптор.", { category: "filesystem" });
+addRule("PY012", ["python"], "Небезопасная распаковка архива", "extractall может записать файл за пределами каталога назначения через traversal-путь.", "high", "CWE-22",
+  /\b(?:tarfile|zipfile)[^\n]*\.extractall\s*\(/, "Проверяйте каждый нормализованный путь участника архива и отклоняйте выход за каталог назначения.", { confidence: "medium", category: "validation" });
+addRule("PY013", ["python"], "Обход HTML-экранирования", "mark_safe или Markup помечает строку доверенным HTML.", "high", "CWE-79",
+  /\b(?:mark_safe|Markup)\s*\(/, "Не помечайте пользовательские данные безопасными; используйте контекстное экранирование.", { confidence: "medium", category: "xss" });
+addRule("PY014", ["python"], "JWT без проверки подписи", "Проверка подписи JWT явно отключена или разрешён алгоритм none.", "critical", "CWE-347",
+  /jwt\.decode\s*\([^\n]*(?:verify_signature["']?\s*:\s*False|verify\s*=\s*False|algorithms\s*=\s*\[[^\]]*["']none["'])/i, "Всегда проверяйте подпись, issuer, audience и используйте фиксированный allowlist алгоритмов.", { category: "authentication" });
+addRule("PY015", ["python"], "Слабая криптографическая хеш-функция", "MD5 или SHA-1 не обеспечивают стойкость к коллизиям.", "medium", "CWE-327",
+  /\bhashlib\.(?:md5|sha1)\s*\(/i, "Используйте SHA-256/512 для целостности или Argon2id/scrypt/bcrypt для паролей.", { category: "crypto" });
+addRule("PY016", ["python"], "Чувствительные данные в журнале", "В журнал может попасть пароль, токен или секрет.", "medium", "CWE-532",
+  /\b(?:logging|logger)\.(?:debug|info|warning|error|critical)\s*\([^\n]*(?:password|passwd|token|secret)/i, "Не журналируйте секреты; маскируйте чувствительные поля до передачи логгеру.", { confidence: "medium", category: "logging" });
+
 addRule("JAVA002", ["java", "kotlin"], "Небезопасная Java-десериализация", "ObjectInputStream может создать опасную цепочку объектов.", "critical", "CWE-502",
   /\b(?:(?:new\s+)?ObjectInputStream\s*\(|\.readObject\s*\()/, "Откажитесь от native serialization или применяйте строгий JEP 290 allowlist.", { category: "deserialization" });
 addRule("JAVA003", ["java", "kotlin"], "XXE в XML parser", "XML factory создаётся без видимого запрета DTD и внешних сущностей.", "high", "CWE-611",
   /(?:DocumentBuilderFactory|SAXParserFactory|XMLInputFactory)\.newInstance\s*\(/, "Запретите DTD и внешние сущности; включите secure processing.", { confidence: "medium", category: "xxe" });
 addRule("JAVA004", ["java", "kotlin"], "Отключена проверка hostname", "HostnameVerifier безусловно принимает имя узла.", "high", "CWE-297",
   /HostnameVerifier[\s\S]{0,160}(?:return\s+true|->\s*true)/, "Используйте стандартную проверку hostname и доверенное хранилище сертификатов.", { category: "transport", scope: "file" });
+
+addRule("JAVA005", ["java", "kotlin"], "Выполнение динамического скрипта", "ScriptEngine.eval выполняет динамически сформированный код.", "critical", "CWE-95",
+  /\b(?:ScriptEngine|scriptEngine|engine)\.eval\s*\(/, "Не выполняйте недоверенный код; используйте явное сопоставление разрешённых операций.", { confidence: "medium", category: "injection" });
+addRule("JAVA006", ["java", "kotlin"], "Слабый генератор случайных значений", "java.util.Random и Math.random непригодны для токенов и ключей.", "medium", "CWE-338",
+  /\b(?:new\s+(?:java\.util\.)?Random\s*\(|Math\.random\s*\()/, "Для security-sensitive значений используйте SecureRandom.", { confidence: "medium", category: "crypto" });
+addRule("JAVA007", ["java", "kotlin"], "TrustManager принимает любой сертификат", "Пустая проверка checkServerTrusted отключает аутентификацию TLS-сервера.", "high", "CWE-295",
+  /checkServerTrusted\s*\([^)]*\)\s*\{\s*\}/, "Используйте системный TrustManager или выполняйте полную проверку цепочки сертификатов.", { category: "transport", scope: "file" });
+addRule("JAVA008", ["java", "kotlin"], "SQL-инъекция через Statement", "SQL-команда для Statement строится конкатенацией.", "critical", "CWE-89",
+  /\b(?:execute|executeQuery|executeUpdate)\s*\([^\n)]*(?:\+|String\.format\s*\()/, "Используйте PreparedStatement и bind-параметры.", { confidence: "medium", category: "injection" });
+addRule("JAVA009", ["java", "kotlin"], "Path traversal из HTTP-параметра", "Путь к файлу напрямую зависит от параметра HTTP-запроса.", "high", "CWE-22",
+  /\b(?:new\s+File|Paths\.get|Path\.of)\s*\([^\n)]*(?:getParameter|request\.|params\[)/i, "Нормализуйте путь и убедитесь, что он остаётся внутри фиксированного базового каталога.", { confidence: "medium", category: "validation" });
+addRule("JAVA010", ["java", "kotlin"], "Слабая криптографическая хеш-функция", "MessageDigest использует MD5 или SHA-1.", "medium", "CWE-327",
+  /MessageDigest\.getInstance\s*\(\s*["'](?:MD5|SHA-?1)["']\s*\)/i, "Используйте SHA-256/512 для целостности или специализированный password hashing.", { category: "crypto" });
 
 addRule("PHP002", ["php"], "Небезопасная PHP-десериализация", "unserialize над недоверенными данными может активировать magic methods.", "critical", "CWE-502",
   /\bunserialize\s*\(/i, "Используйте JSON; если невозможно — allowed_classes=false и строгая проверка источника.", { category: "deserialization" });
@@ -403,6 +429,19 @@ addRule("GO002", ["go"], "Отключена проверка TLS", "InsecureSki
   /InsecureSkipVerify\s*:\s*true/, "Удалите InsecureSkipVerify и настройте RootCAs/ServerName.", { category: "transport" });
 addRule("GO003", ["go"], "Обход HTML-экранирования", "template.HTML помечает строку доверенным HTML.", "high", "CWE-79",
   /template\.(?:HTML|HTMLAttr|JS|URL)\s*\(/, "Не приводите недоверенные строки к trusted template-типам.", { confidence: "medium", category: "xss" });
+
+addRule("GO004", ["go"], "Слабая криптографическая хеш-функция", "crypto/md5 или crypto/sha1 не обеспечивают стойкость к коллизиям.", "medium", "CWE-327",
+  /\b(?:md5|sha1)\.(?:New|Sum)\s*\(/, "Используйте crypto/sha256 или crypto/sha512; для паролей применяйте Argon2id/scrypt/bcrypt.", { category: "crypto" });
+addRule("GO005", ["go"], "HTTP-сервер без TLS", "ListenAndServe запускает незашифрованный HTTP-сервер.", "medium", "CWE-319",
+  /\bhttp\.ListenAndServe\s*\(/, "Используйте ListenAndServeTLS либо завершайте TLS на доверенном reverse proxy.", { confidence: "medium", category: "transport" });
+addRule("GO006", ["go"], "Небезопасные права создаваемого файла", "Файл создаётся с правами 0777 или 0666.", "high", "CWE-732",
+  /\bos\.(?:WriteFile|OpenFile|Mkdir|MkdirAll)\s*\([^\n]*(?:0?777|0?666)\b/, "Назначьте минимально необходимые права, обычно 0600 для файлов и 0700/0750 для каталогов.", { category: "configuration" });
+addRule("GO007", ["go"], "JWT разобран без проверки подписи", "ParseUnverified возвращает claims без криптографической проверки.", "critical", "CWE-347",
+  /\bParseUnverified\s*\(/, "Используйте ParseWithClaims/Parse и проверяйте метод подписи, issuer, audience и срок действия.", { category: "authentication" });
+addRule("GO008", ["go"], "Path traversal из HTTP-параметра", "Путь к файлу строится напрямую из параметра HTTP-запроса.", "high", "CWE-22",
+  /filepath\.Join\s*\([^\n]*(?:r\.URL\.Query|FormValue|PathValue)\s*\(/, "Очистите и нормализуйте значение, затем проверьте принадлежность фиксированному базовому каталогу.", { confidence: "medium", category: "validation" });
+addRule("GO009", ["go"], "SQL-инъекция через fmt", "SQL-команда формируется через fmt.Sprintf перед выполнением.", "critical", "CWE-89",
+  /\b(?:Query|QueryRow|Exec)(?:Context)?\s*\([^\n]*fmt\.Sprintf\s*\(/, "Передавайте значения отдельными аргументами параметризованного запроса.", { confidence: "medium", category: "injection" });
 
 addRule("CS001", ["csharp"], "Небезопасная .NET-десериализация", "BinaryFormatter или NetDataContractSerializer допускает выполнение кода.", "critical", "CWE-502",
   /\b(?:BinaryFormatter|NetDataContractSerializer|LosFormatter|SoapFormatter)\b/, "Удалите опасный formatter и используйте System.Text.Json со строгими DTO.", { category: "deserialization" });
