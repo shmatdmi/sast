@@ -7,6 +7,7 @@ import {
 } from "./icons";
 import { languageLabels, ruleCount, scanCode, scanFiles, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
 import { demoCode } from "../lib/demo-code";
+import packageMetadata from "../../package.json";
 import {
   acceptedSourceExtensions, extractZip, isSupportedSourceFile, MAX_ARCHIVE_BYTES, MAX_SOURCE_FILE_BYTES, type SourceFile,
 } from "../lib/archive";
@@ -127,7 +128,7 @@ export default function SastWorkspace() {
 
   const exportReport = () => {
     if (!result) return;
-    const report = { tool: "CodeSentry Local SAST", version: "1.0.0", scannedAt: new Date().toISOString(), file: filename || "code.txt", ...result };
+    const report = { tool: "CodeSentry Local SAST", version: packageMetadata.version, scannedAt: new Date().toISOString(), file: filename || "code.txt", ...result };
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -144,7 +145,7 @@ export default function SastWorkspace() {
       runs: [{
         tool: { driver: {
           name: "CodeSentry Local SAST",
-          version: "2.0.0",
+          version: packageMetadata.version,
           informationUri: "https://github.com/shmatdmi/sast",
           rules: uniqueRules.map((finding) => ({
             id: finding.ruleId,
@@ -251,7 +252,7 @@ export default function SastWorkspace() {
       </section>}
 
           <section className="how" id="how"><div className="section-kicker">РАБОЧИЙ ПРОЦЕСС</div><h2>От исходника до исправления</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте источник</h3><p>Файл, ZIP-проект или фрагмент кода остаётся внутри браузера.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите движок</h3><p>Правила безопасной разработки проверят каждую строку локально.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Устраните риски</h3><p>Используйте CWE, точную строку и рекомендацию для каждой находки.</p></article></div></section>
-          <footer><p>CodeSentry Local SAST</p><span>Система работает штатно</span><span className="footer-status"><i />LOCAL</span></footer>
+          <footer><p>CodeSentry Local SAST · v{packageMetadata.version}</p><span>Система работает штатно</span><span className="footer-status"><i />LOCAL</span></footer>
         </div>
       </div>
     </main>
