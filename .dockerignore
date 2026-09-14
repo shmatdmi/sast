@@ -1,5 +1,7 @@
 .git
+.vinext
 .wrangler
+dist
 node_modules
 coverage
 outputs
