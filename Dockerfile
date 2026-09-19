@@ -2,7 +2,8 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    BUILD_TARGET=node
 
 COPY package.json package-lock.json ./
 RUN npm ci

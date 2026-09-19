@@ -13,12 +13,14 @@
     "test:coverage": "node --experimental-test-coverage --test-coverage-include=app/lib/archive.ts --test-coverage-include=app/lib/sast-engine.ts --test tests/sast-engine.test.ts tests/archive.test.ts tests/additional.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp",
     "check": "npm run lint && npm test",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
     "fflate": "^0.8.3",
     "next": "^16.3.5",
+    "postgres": "^3.4.7",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },

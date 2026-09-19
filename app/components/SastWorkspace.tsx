@@ -105,15 +105,31 @@ export default function SastWorkspace() {
     }
   }, []);
 
-  const analyze = () => {
+  const analyze = async () => {
     if (!(archiveFiles.length ? archiveFiles.some((file) => file.code.trim()) : code.trim())) { setNotice("Добавьте исходный код или загрузите файл, чтобы начать анализ."); return; }
     setNotice(""); setScanning(true);
-    window.setTimeout(() => {
-      const next = archiveFiles.length ? scanFiles(archiveFiles) : scanCode(code, filename || "code.txt", language);
-      setResult(next); setExpanded(new Set(next.findings.slice(0, 2).map((finding) => finding.id)));
-      setFilter("all"); setScanning(false);
+    await new Promise((resolve) => window.setTimeout(resolve, 560));
+    const next = archiveFiles.length ? scanFiles(archiveFiles) : scanCode(code, filename || "code.txt", language);
+    setResult(next); setExpanded(new Set(next.findings.slice(0, 2).map((finding) => finding.id)));
+    setFilter("all");
+    try {
+      const response = await fetch("/api/scans", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projectName: filename || "code.txt", language: next.language,
+          scannedLines: next.scannedLines, durationMs: next.durationMs,
+          filesScanned: next.filesScanned, summary: next.summary,
+        }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      console.error("Failed to save scan", error);
+      setNotice("\u0410\u043d\u0430\u043b\u0438\u0437 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043d, \u043d\u043e \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0435\u0433\u043e \u0432 \u0438\u0441\u0442\u043e\u0440\u0438\u0438 \u043d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c. \u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043a \u0431\u0430\u0437\u0435 \u0434\u0430\u043d\u043d\u044b\u0445.");
+    } finally {
+      setScanning(false);
       window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    }, 560);
+    }
   };
 
   const clear = () => {

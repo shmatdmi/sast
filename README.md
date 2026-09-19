@@ -53,3 +53,14 @@ npm test
 ```
 
 Автоматический анализ не заменяет ручной аудит, dependency scanning и code review.
+
+## Docker Compose + PostgreSQL
+
+1. Create the environment file: `Copy-Item .env.example .env` (or `cp .env.example .env` on Linux).
+2. Replace `POSTGRES_PASSWORD` in `.env` with a long random password.
+3. Start the stack: `docker compose up -d --build`.
+4. Check it: `docker compose ps` and open `http://localhost:3000/api/health`.
+
+PostgreSQL is available only inside the Compose network and does not publish port 5432 on the host, so it does not conflict with another PostgreSQL container on the server. Data is stored in the named volume `codesentry-sast_sast_postgres_data`. Migrations run automatically before the application starts.
+
+To expose the application on another host port, set `APP_PORT` in `.env`. Do not delete the database volume unless the stored scan metadata is no longer needed.
