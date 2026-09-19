@@ -34,11 +34,12 @@ services:
       start_period: 30s
       retries: 3
     restart: unless-stopped
-    networks: [backend]
+    networks: [frontend, backend]
 
 volumes:
   sast_postgres_data:
 
 networks:
+  frontend:
   backend:
     internal: true
