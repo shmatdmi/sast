@@ -18,6 +18,7 @@ services:
     networks: [backend]
 
   app:
+    image: ${APP_IMAGE:-shmatdmi/codesentry-sast:latest}
     build: { context: . }
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sast}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sast}
