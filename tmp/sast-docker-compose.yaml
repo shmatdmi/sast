@@ -1,0 +1,50 @@
+name: codesentry-sast
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sast}
+      POSTGRES_USER: ${POSTGRES_USER:-sast}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - sast_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks: [frontend, backend]
+
+  app:
+    image: shmatdmi/codesentry-sast:2fda617
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sast}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sast}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "npm run db:migrate && npm run start -- --hostname 0.0.0.0 --port 3000"]
+    ports:
+      - "${APP_PORT:-8484}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+    networks: [frontend, backend]
+
+volumes:
+  sast_postgres_data:
+    external: true
+    name: codesentry-sast_sast_postgres_data
+
+networks:
+  frontend:
+  backend:
+    internal: true
