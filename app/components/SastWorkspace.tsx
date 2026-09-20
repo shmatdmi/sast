@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertIcon, CheckIcon, ChevronIcon, CloseIcon, CodeIcon, CopyIcon,
   DownloadIcon, FileIcon, LockIcon, ScanIcon, ShieldIcon, UploadIcon,
 } from "./icons";
 import { languageLabels, ruleCount, scanCode, scanFiles, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
 import { demoCode } from "../lib/demo-code";
-import packageMetadata from "../../package.json";
+import { appVersion } from "../lib/version";
 import {
   acceptedSourceExtensions, extractZip, isSupportedSourceFile, MAX_ARCHIVE_BYTES, MAX_SOURCE_FILE_BYTES, type SourceFile,
 } from "../lib/archive";
@@ -80,6 +80,39 @@ export default function SastWorkspace() {
   const [notice, setNotice] = useState("");
   const [archiveFiles, setArchiveFiles] = useState<SourceFile[]>([]);
   const [archiveSkipped, setArchiveSkipped] = useState(0);
+  const [activeSection, setActiveSection] = useState("overview");
+
+  const navigateToSection = useCallback((section: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const target = document.getElementById(section);
+
+    if (!target && section === "findings") {
+      setNotice("Чтобы открыть находки, сначала загрузите код и запустите проверку.");
+      setActiveSection("scanner");
+      window.history.pushState(null, "", "#scanner");
+      document.getElementById("scanner")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    if (!target) return;
+    setActiveSection(section);
+    window.history.pushState(null, "", `#${section}`);
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  useEffect(() => {
+    const sections = ["overview", "scanner", "findings", "how"]
+      .map((id) => document.getElementById(id))
+      .filter((section): section is HTMLElement => Boolean(section));
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
+      if (visible?.target.id) setActiveSection(visible.target.id);
+    }, { rootMargin: "-20% 0px -55%", threshold: [0, 0.15, 0.5] });
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [result]);
 
   const loadFile = useCallback(async (file: File) => {
     const isZip = file.name.toLowerCase().endsWith(".zip");
@@ -144,7 +177,7 @@ export default function SastWorkspace() {
 
   const exportReport = () => {
     if (!result) return;
-    const report = { tool: "CodeSentry Local SAST", version: packageMetadata.version, scannedAt: new Date().toISOString(), file: filename || "code.txt", ...result };
+    const report = { tool: "CodeSentry Local SAST", version: appVersion, scannedAt: new Date().toISOString(), file: filename || "code.txt", ...result };
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -161,7 +194,7 @@ export default function SastWorkspace() {
       runs: [{
         tool: { driver: {
           name: "CodeSentry Local SAST",
-          version: packageMetadata.version,
+          version: appVersion,
           informationUri: "https://github.com/shmatdmi/sast",
           rules: uniqueRules.map((finding) => ({
             id: finding.ruleId,
@@ -201,18 +234,18 @@ export default function SastWorkspace() {
       <aside className="sidebar" aria-label="Основная навигация">
         <a className="brand" href="#top"><span className="brand-mark"><ShieldIcon size={20} /></span><span>CODE<strong>SENTRY</strong></span></a>
         <nav>
-          <a className="active" href="#overview"><ScanIcon size={17} /><span>Обзор</span></a>
-          <a href="#scanner"><CodeIcon size={17} /><span>Сканер</span></a>
-          <a href="#findings"><AlertIcon size={17} /><span>Находки</span>{result && <b>{result.summary.total}</b>}</a>
-          <a href="#how"><FileIcon size={17} /><span>Справка</span></a>
+          <a className={activeSection === "overview" ? "active" : ""} href="#overview" onClick={navigateToSection("overview")}><ScanIcon size={17} /><span>Обзор</span></a>
+          <a className={activeSection === "scanner" ? "active" : ""} href="#scanner" onClick={navigateToSection("scanner")}><CodeIcon size={17} /><span>Сканер</span></a>
+          <a className={activeSection === "findings" ? "active" : ""} href="#findings" onClick={navigateToSection("findings")}><AlertIcon size={17} /><span>Находки</span>{result && <b>{result.summary.total}</b>}</a>
+          <a className={activeSection === "how" ? "active" : ""} href="#how" onClick={navigateToSection("how")}><FileIcon size={17} /><span>Справка</span></a>
         </nav>
         <div className="sidebar-status"><span className="status-dot" /><div><strong>Движок активен</strong><small>Локальный режим</small></div></div>
-        <div className="sidebar-version">v1.0.0</div>
+        <div className="sidebar-version">v{appVersion}</div>
       </aside>
       <div className="app-main">
         <header className="topbar">
           <div className="breadcrumbs"><span>CodeSentry</span><i>/</i><strong>Security overview</strong></div>
-          <div className="topbar-actions"><span className="privacy-badge"><LockIcon size={14} />Код не загружается в облако</span><a className="how-link" href="#how">Документация</a></div>
+          <div className="topbar-actions"><span className="privacy-badge"><LockIcon size={14} />Код не загружается в облако</span><a className="how-link" href="#how" onClick={navigateToSection("how")}>Документация</a></div>
         </header>
         <div className="dashboard-content">
           <section className="overview" id="overview">
@@ -268,7 +301,7 @@ export default function SastWorkspace() {
       </section>}
 
           <section className="how" id="how"><div className="section-kicker">РАБОЧИЙ ПРОЦЕСС</div><h2>От исходника до исправления</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте источник</h3><p>Файл, ZIP-проект или фрагмент кода остаётся внутри браузера.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите движок</h3><p>Правила безопасной разработки проверят каждую строку локально.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Устраните риски</h3><p>Используйте CWE, точную строку и рекомендацию для каждой находки.</p></article></div></section>
-          <footer><p>CodeSentry Local SAST · v{packageMetadata.version}</p><span>Система работает штатно</span><span className="footer-status"><i />LOCAL</span></footer>
+          <footer><p>CodeSentry Local SAST · v{appVersion}</p><span>Система работает штатно</span><span className="footer-status"><i />LOCAL</span></footer>
         </div>
       </div>
     </main>

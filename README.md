@@ -56,6 +56,20 @@ npm test
 
 ## Docker Compose + PostgreSQL
 
+Build a new image with a unique application version:
+
+```bash
+npm run image:build
+```
+
+To build and push `shmatdmi/codesentry-sast:latest` to Docker Hub, use
+`npm run image:publish`.
+
+The command generates a version such as `1.1.0+build.20260920T123456789Z` and
+passes it to Docker. The deployed version is shown in the UI and returned by
+`GET /api/health`. Set the `APP_BUILD_VERSION` build argument to use an explicit
+version in CI.
+
 1. Create the environment file: `Copy-Item .env.example .env` (or `cp .env.example .env` on Linux).
 2. Replace `POSTGRES_PASSWORD` in `.env` with a long random password.
 3. Start the stack: `docker compose up -d --build`.

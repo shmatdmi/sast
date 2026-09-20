@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
+    "image:build": "node scripts/build-image.mjs",
+    "image:publish": "node scripts/build-image.mjs --push",
     "start": "vinext start",
     "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sast-engine.test.ts tests/archive.test.ts tests/additional.test.ts",
     "test:coverage": "node --experimental-test-coverage --test-coverage-include=app/lib/archive.ts --test-coverage-include=app/lib/sast-engine.ts --test tests/sast-engine.test.ts tests/archive.test.ts tests/additional.test.ts",

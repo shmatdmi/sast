@@ -1,5 +1,6 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
+import packageMetadata from "./package.json";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
 
@@ -35,6 +36,9 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async () => {
+  const generatedBuildId = new Date().toISOString().replace(/[-:.]/g, "");
+  const appVersion = process.env.APP_BUILD_VERSION?.trim()
+    || `${packageMetadata.version}+build.${generatedBuildId}`;
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -47,6 +51,9 @@ export default defineConfig(async () => {
     : (await import("@cloudflare/vite-plugin")).cloudflare;
 
   return {
+    define: {
+      __APP_BUILD_VERSION__: JSON.stringify(appVersion),
+    },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

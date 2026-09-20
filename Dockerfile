@@ -9,6 +9,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+ARG APP_BUILD_VERSION
+ENV APP_BUILD_VERSION=${APP_BUILD_VERSION}
 RUN npm run build
 
 ENV NODE_ENV=production \
