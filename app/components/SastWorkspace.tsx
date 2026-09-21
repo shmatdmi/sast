@@ -13,6 +13,11 @@ import {
 } from "../lib/archive";
 
 const severities: Array<Severity | "all"> = ["all", "critical", "high", "medium", "low"];
+const RELEASE_PATTERN = /^[A-Za-z]{2,4}-(?:[1-9][0-9]{0,3})$/;
+type HistoricalScan = {
+  id: string; projectName: string; release: string; language: string; scannedLines: number;
+  durationMs: number; filesScanned: number; summary: ScanResult["summary"]; createdAt: string;
+};
 const severityLabels: Record<Severity | "all", string> = {
   all: "Все", critical: "Критические", high: "Высокие", medium: "Средние", low: "Низкие", info: "Инфо",
 };
@@ -81,6 +86,10 @@ export default function SastWorkspace() {
   const [archiveFiles, setArchiveFiles] = useState<SourceFile[]>([]);
   const [archiveSkipped, setArchiveSkipped] = useState(0);
   const [activeSection, setActiveSection] = useState("overview");
+  const [release, setRelease] = useState("");
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [history, setHistory] = useState<HistoricalScan[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const navigateToSection = useCallback((section: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -101,7 +110,7 @@ export default function SastWorkspace() {
   }, []);
 
   useEffect(() => {
-    const sections = ["overview", "scanner", "findings", "how"]
+    const sections = ["overview", "history", "scanner", "findings", "how"]
       .map((id) => document.getElementById(id))
       .filter((section): section is HTMLElement => Boolean(section));
     const observer = new IntersectionObserver((entries) => {
@@ -140,6 +149,7 @@ export default function SastWorkspace() {
 
   const analyze = async () => {
     if (!(archiveFiles.length ? archiveFiles.some((file) => file.code.trim()) : code.trim())) { setNotice("Добавьте исходный код или загрузите файл, чтобы начать анализ."); return; }
+    if (!RELEASE_PATTERN.test(release)) { setNotice("Укажите релиз: 2–4 английские буквы, дефис и число от 1 до 9999. Например: test-456."); return; }
     setNotice(""); setScanning(true);
     await new Promise((resolve) => window.setTimeout(resolve, 560));
     const next = archiveFiles.length ? scanFiles(archiveFiles) : scanCode(code, filename || "code.txt", language);
@@ -150,9 +160,9 @@ export default function SastWorkspace() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          projectName: filename || "code.txt", language: next.language,
+          projectName: filename || "code.txt", release, language: next.language,
           scannedLines: next.scannedLines, durationMs: next.durationMs,
-          filesScanned: next.filesScanned, summary: next.summary,
+          filesScanned: next.filesScanned, summary: next.summary, findings: next.findings,
         }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -163,6 +173,35 @@ export default function SastWorkspace() {
       setScanning(false);
       window.setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     }
+  };
+
+  const searchHistory = async () => {
+    setHistoryLoading(true); setNotice("");
+    try {
+      const response = await fetch(`/api/scans?q=${encodeURIComponent(historyQuery.trim())}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      setHistory(await response.json() as HistoricalScan[]);
+    } catch (error) {
+      console.error("Failed to load scan history", error);
+      setNotice("Не удалось загрузить историю сканирований.");
+    } finally { setHistoryLoading(false); }
+  };
+
+  const openHistoricalScan = async (id: string) => {
+    setHistoryLoading(true); setNotice("");
+    try {
+      const response = await fetch(`/api/scans?id=${encodeURIComponent(id)}`);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const stored = await response.json() as HistoricalScan & { findings: Finding[] };
+      setFilename(stored.projectName); setRelease(stored.release);
+      setResult({ language: stored.language, scannedLines: stored.scannedLines, durationMs: stored.durationMs,
+        filesScanned: stored.filesScanned, summary: stored.summary, findings: stored.findings });
+      setFilter("all"); setExpanded(new Set());
+      window.setTimeout(() => document.getElementById("findings")?.scrollIntoView({ behavior: "smooth" }), 50);
+    } catch (error) {
+      console.error("Failed to load historical scan", error);
+      setNotice("Не удалось открыть результат сканирования.");
+    } finally { setHistoryLoading(false); }
   };
 
   const clear = () => {
@@ -177,7 +216,7 @@ export default function SastWorkspace() {
 
   const exportReport = () => {
     if (!result) return;
-    const report = { tool: "CodeSentry Local SAST", version: appVersion, scannedAt: new Date().toISOString(), file: filename || "code.txt", ...result };
+    const report = { tool: "CodeSentry Local SAST", version: appVersion, release, scannedAt: new Date().toISOString(), file: filename || "code.txt", ...result };
     const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -196,6 +235,7 @@ export default function SastWorkspace() {
           name: "CodeSentry Local SAST",
           version: appVersion,
           informationUri: "https://github.com/shmatdmi/sast",
+          properties: { release },
           rules: uniqueRules.map((finding) => ({
             id: finding.ruleId,
             name: finding.title,
@@ -236,6 +276,7 @@ export default function SastWorkspace() {
         <nav>
           <a className={activeSection === "overview" ? "active" : ""} href="#overview" onClick={navigateToSection("overview")}><ScanIcon size={17} /><span>Обзор</span></a>
           <a className={activeSection === "scanner" ? "active" : ""} href="#scanner" onClick={navigateToSection("scanner")}><CodeIcon size={17} /><span>Сканер</span></a>
+          <a className={activeSection === "history" ? "active" : ""} href="#history" onClick={navigateToSection("history")}><FileIcon size={17} /><span>История</span></a>
           <a className={activeSection === "findings" ? "active" : ""} href="#findings" onClick={navigateToSection("findings")}><AlertIcon size={17} /><span>Находки</span>{result && <b>{result.summary.total}</b>}</a>
           <a className={activeSection === "how" ? "active" : ""} href="#how" onClick={navigateToSection("how")}><FileIcon size={17} /><span>Справка</span></a>
         </nav>
@@ -257,6 +298,11 @@ export default function SastWorkspace() {
               <article className="stat-panel"><div className="panel-label"><span>Последний скан</span><FileIcon size={15} /></div><strong>{result ? `${result.durationMs} мс` : "—"}</strong><div className="stat-delta">{result ? `${result.scannedLines} строк` : "ожидает запуска"}</div><small>{result ? filename || "code.txt" : "Нет истории отправки данных"}</small></article>
             </div>
           </section>
+          <section className="history-panel" id="history">
+            <div className="panel-header"><div><span className="panel-dot" /><div><h2>История сканирований</h2><p>Поиск по релизу или имени проекта</p></div></div></div>
+            <div className="history-search"><input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void searchHistory(); }} placeholder="test-456 или project.zip" aria-label="Поиск в истории" /><button onClick={() => void searchHistory()} disabled={historyLoading}>{historyLoading ? "Ищем…" : "Найти"}</button></div>
+            {history.length > 0 && <div className="history-list">{history.map((scan) => <button key={scan.id} onClick={() => void openHistoricalScan(scan.id)}><strong>{scan.release}</strong><span>{scan.projectName}</span><span>{scan.summary.total} находок · {new Date(scan.createdAt).toLocaleString("ru-RU")}</span></button>)}</div>}
+          </section>
           <section className="workspace-shell" id="scanner" aria-label="Рабочая область анализатора">
             <div className="panel-header"><div><span className="panel-dot" /><div><h2>Новый анализ</h2><p>Источник и конфигурация сканирования</p></div></div><span className="panel-time">LOCAL / READY</span></div>
         <div className="input-grid">
@@ -275,6 +321,8 @@ export default function SastWorkspace() {
         </div>
         {notice && <div className="notice" role="alert"><AlertIcon size={17} />{notice}</div>}
         <div className="action-bar">
+          <label>Релиз<input className="release-input" value={release} onChange={(event) => setRelease(event.target.value)} placeholder="test-456" required pattern="[A-Za-z]{2,4}-[1-9][0-9]{0,3}" aria-describedby="release-hint" /></label>
+          <small id="release-hint" className="release-hint">2–4 буквы A–Z, дефис, число 1–9999</small>
           <label>Язык анализа<select value={language} disabled={archiveFiles.length > 0} onChange={(event) => setLanguage(event.target.value)}>{Object.entries(languageLabels).filter(([key]) => key !== "unknown" && key !== "multiple").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <button className="demo-button" onClick={loadDemo}><CodeIcon size={16} />Загрузить пример</button>
           <button className="scan-button" onClick={analyze} disabled={scanning}>{scanning ? <><span className="spinner" />Анализируем…</> : <><ScanIcon size={18} />Запустить проверку</>}</button>
@@ -282,7 +330,7 @@ export default function SastWorkspace() {
           </section>
 
       {result && <section className="results" id="findings" ref={resultsRef} aria-live="polite">
-        <div className="results-heading"><div><span className="panel-dot warning" /><div><h2>Результат анализа</h2><p>{filename || "code.txt"} · {result.filesScanned ? `${result.filesScanned} файлов · ` : ""}{languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
+        <div className="results-heading"><div><span className="panel-dot warning" /><div><h2>Результат анализа · {release}</h2><p>{filename || "code.txt"} · {result.filesScanned ? `${result.filesScanned} файлов · ` : ""}{languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
         <div className="summary-grid">
           <div className="score-card"><ScoreRing score={result.summary.score} /><div><span>Оценка безопасности</span><strong>{result.summary.score >= 85 ? "Хороший результат" : result.summary.score >= 60 ? "Требует внимания" : "Высокий риск"}</strong><p>На основе серьёзности и количества найденных проблем</p></div></div>
           <div className="severity-card critical"><span>Критические</span><strong>{result.summary.critical}</strong><small>Исправить немедленно</small></div>

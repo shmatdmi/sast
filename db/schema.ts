@@ -5,6 +5,7 @@ export type StoredScanSummary = { total: number; critical: number; high: number;
 export const scanRuns = pgTable("scan_runs", {
   id: uuid("id").defaultRandom().primaryKey(),
   projectName: text("project_name").notNull(),
+  release: text("release").notNull(),
   status: text("status").notNull().default("completed"),
   language: text("language").notNull(),
   scannedLines: integer("scanned_lines").notNull(),
@@ -12,7 +13,10 @@ export const scanRuns = pgTable("scan_runs", {
   filesScanned: integer("files_scanned").notNull().default(1),
   summary: jsonb("summary").$type<StoredScanSummary>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [index("scan_runs_created_at_idx").on(table.createdAt)]);
+}, (table) => [
+  index("scan_runs_created_at_idx").on(table.createdAt),
+  index("scan_runs_release_idx").on(table.release),
+]);
 
 export const scanFindings = pgTable("scan_findings", {
   id: uuid("id").defaultRandom().primaryKey(),
