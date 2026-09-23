@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertIcon, CheckIcon, ChevronIcon, CloseIcon, CodeIcon, CopyIcon,
-  DownloadIcon, FileIcon, LockIcon, ScanIcon, ShieldIcon, UploadIcon,
+  DownloadIcon, FileIcon, LockIcon, ScanIcon, ShieldIcon, UploadIcon, UserIcon,
 } from "./icons";
+import UsersPanel from "./UsersPanel";
+import PasswordDialog from "./PasswordDialog";
+import SonarLite from "./SonarLite";
+import type { AuthUser } from "../lib/auth";
 import { languageLabels, ruleCount, scanCode, scanFiles, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
 import { demoCode } from "../lib/demo-code";
 import { appVersion } from "../lib/version";
@@ -70,7 +74,7 @@ function FindingCard({ finding, expanded, onToggle }: { finding: Finding; expand
   );
 }
 
-export default function SastWorkspace() {
+export default function SastWorkspace({ user }: { user: AuthUser }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const [code, setCode] = useState("");
@@ -90,6 +94,7 @@ export default function SastWorkspace() {
   const [historyQuery, setHistoryQuery] = useState("");
   const [history, setHistory] = useState<HistoricalScan[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(user.mustChangePassword);
 
   const navigateToSection = useCallback((section: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -110,7 +115,7 @@ export default function SastWorkspace() {
   }, []);
 
   useEffect(() => {
-    const sections = ["overview", "history", "scanner", "findings", "how"]
+    const sections = ["overview", "history", "scanner", "sonar", "findings", "how", ...(user.role === "admin" ? ["users"] : [])]
       .map((id) => document.getElementById(id))
       .filter((section): section is HTMLElement => Boolean(section));
     const observer = new IntersectionObserver((entries) => {
@@ -121,7 +126,7 @@ export default function SastWorkspace() {
     }, { rootMargin: "-20% 0px -55%", threshold: [0, 0.15, 0.5] });
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, [result]);
+  }, [result, user.role]);
 
   const loadFile = useCallback(async (file: File) => {
     const isZip = file.name.toLowerCase().endsWith(".zip");
@@ -268,6 +273,7 @@ export default function SastWorkspace() {
     if (!result) return [];
     return filter === "all" ? result.findings : result.findings.filter((finding) => finding.severity === filter);
   }, [filter, result]);
+  const sonarSources = useMemo(() => archiveFiles.length ? archiveFiles.map((file) => ({ name: file.name, code: file.code })) : [{ name: filename || "code.txt", code }], [archiveFiles, code, filename]);
 
   return (
     <main className="app-shell" id="top">
@@ -276,9 +282,11 @@ export default function SastWorkspace() {
         <nav>
           <a className={activeSection === "overview" ? "active" : ""} href="#overview" onClick={navigateToSection("overview")}><ScanIcon size={17} /><span>Обзор</span></a>
           <a className={activeSection === "scanner" ? "active" : ""} href="#scanner" onClick={navigateToSection("scanner")}><CodeIcon size={17} /><span>Сканер</span></a>
+          <a className={activeSection === "sonar" ? "active" : ""} href="#sonar" onClick={navigateToSection("sonar")}><ShieldIcon size={17} /><span>Sonar Lite</span></a>
           <a className={activeSection === "history" ? "active" : ""} href="#history" onClick={navigateToSection("history")}><FileIcon size={17} /><span>История</span></a>
           <a className={activeSection === "findings" ? "active" : ""} href="#findings" onClick={navigateToSection("findings")}><AlertIcon size={17} /><span>Находки</span>{result && <b>{result.summary.total}</b>}</a>
           <a className={activeSection === "how" ? "active" : ""} href="#how" onClick={navigateToSection("how")}><FileIcon size={17} /><span>Справка</span></a>
+          {user.role === "admin" && <a className={activeSection === "users" ? "active" : ""} href="#users" onClick={navigateToSection("users")}><UserIcon size={17} /><span>Пользователи</span></a>}
         </nav>
         <div className="sidebar-status"><span className="status-dot" /><div><strong>Движок активен</strong><small>Локальный режим</small></div></div>
         <div className="sidebar-version">v{appVersion}</div>
@@ -286,9 +294,10 @@ export default function SastWorkspace() {
       <div className="app-main">
         <header className="topbar">
           <div className="breadcrumbs"><span>CodeSentry</span><i>/</i><strong>Security overview</strong></div>
-          <div className="topbar-actions"><span className="privacy-badge"><LockIcon size={14} />Код не загружается в облако</span><a className="how-link" href="#how" onClick={navigateToSection("how")}>Документация</a></div>
+          <div className="topbar-actions"><span className="privacy-badge"><LockIcon size={14} />Код не загружается в облако</span><span className="account-name"><UserIcon size={14} />{user.displayName}</span><button className="topbar-button" onClick={() => setPasswordOpen(true)}>Сменить пароль</button><button className="topbar-button" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.reload(); }}>Выйти</button></div>
         </header>
         <div className="dashboard-content">
+          {user.role === "admin" && <UsersPanel currentUserId={user.id} />}
           <section className="overview" id="overview">
             <div className="page-heading"><div><span className="eyebrow">SECURITY CONTROL CENTER</span><h1>Обзор безопасности</h1><p>Запустите локальный SAST-анализ и получите карту рисков исходного кода.</p></div><button className="primary-cta" onClick={() => document.getElementById("scanner")?.scrollIntoView({ behavior: "smooth" })}><ScanIcon size={17} />Новый анализ</button></div>
             <div className="overview-grid">
@@ -329,6 +338,8 @@ export default function SastWorkspace() {
         </div>
           </section>
 
+          <SonarLite sources={sonarSources} />
+
       {result && <section className="results" id="findings" ref={resultsRef} aria-live="polite">
         <div className="results-heading"><div><span className="panel-dot warning" /><div><h2>Результат анализа · {release}</h2><p>{filename || "code.txt"} · {result.filesScanned ? `${result.filesScanned} файлов · ` : ""}{languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
         <div className="summary-grid">
@@ -352,6 +363,7 @@ export default function SastWorkspace() {
           <footer><p>CodeSentry Local SAST · v{appVersion}</p><span>Система работает штатно</span><span className="footer-status"><i />LOCAL</span></footer>
         </div>
       </div>
+      {passwordOpen && <PasswordDialog forced={user.mustChangePassword} onClose={() => setPasswordOpen(false)} />}
     </main>
   );
 }

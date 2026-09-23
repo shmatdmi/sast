@@ -2,6 +2,7 @@ import { getDb } from "../../../db";
 import { scanRuns } from "../../../db/schema";
 import { desc, eq, ilike, or } from "drizzle-orm";
 import { scanFindings } from "../../../db/schema";
+import { requireApiUser } from "../../lib/auth";
 
 type ScanPayload = { projectName?: unknown; release?: unknown; language?: unknown; scannedLines?: unknown; durationMs?: unknown; filesScanned?: unknown; summary?: unknown; findings?: unknown };
 const summaryFields = ["total", "critical", "high", "medium", "low", "info", "score"] as const;
@@ -30,6 +31,8 @@ function parsePayload(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireApiUser(request);
+  if ("response" in auth) return auth.response;
   try {
     if (Number(request.headers.get("content-length") ?? 0) > 5_242_880)
       return Response.json({ error: "Payload is too large" }, { status: 413 });
@@ -66,6 +69,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const auth = await requireApiUser(request);
+  if ("response" in auth) return auth.response;
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim().slice(0, 100) ?? "";
   const id = url.searchParams.get("id");

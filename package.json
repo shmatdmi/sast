@@ -11,7 +11,7 @@
     "image:build": "node scripts/build-image.mjs",
     "image:publish": "node scripts/build-image.mjs --push",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sast-engine.test.ts tests/archive.test.ts tests/additional.test.ts",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sast-engine.test.ts tests/archive.test.ts tests/additional.test.ts tests/auth.test.ts tests/sonar-lite.test.ts",
     "test:coverage": "node --experimental-test-coverage --test-coverage-include=app/lib/archive.ts --test-coverage-include=app/lib/sast-engine.ts --test tests/sast-engine.test.ts tests/archive.test.ts tests/additional.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp",
     "check": "npm run lint && npm test",
@@ -19,12 +19,18 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitejs/plugin-rsc": "^0.5.26",
+    "drizzle-kit": "0.31.10",
     "drizzle-orm": "0.45.2",
     "fflate": "^0.8.3",
     "next": "^16.3.5",
     "postgres": "^3.4.7",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-server-dom-webpack": "^19.2.6",
+    "vinext": "^0.0.50",
+    "vite": "^8.0.13"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.37.1",
@@ -32,16 +38,10 @@
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.2",
-    "@vitejs/plugin-rsc": "^0.5.26",
-    "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
-    "react-server-dom-webpack": "^19.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
-    "vinext": "^0.0.50",
-    "vite": "^8.0.13",
     "wrangler": "^4.92.0"
   },
   "type": "module"

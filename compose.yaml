@@ -25,6 +25,9 @@ services:
         APP_BUILD_VERSION: ${APP_BUILD_VERSION:-}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sast}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sast}
+      INITIAL_ADMIN_USERNAME: ${INITIAL_ADMIN_USERNAME:-admin}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?Set INITIAL_ADMIN_PASSWORD in .env}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
       NODE_ENV: production
     depends_on:
       postgres: { condition: service_healthy }

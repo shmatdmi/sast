@@ -71,10 +71,16 @@ passes it to Docker. The deployed version is shown in the UI and returned by
 version in CI.
 
 1. Create the environment file: `Copy-Item .env.example .env` (or `cp .env.example .env` on Linux).
-2. Replace `POSTGRES_PASSWORD` in `.env` with a long random password.
+2. Replace `POSTGRES_PASSWORD` and `INITIAL_ADMIN_PASSWORD` in `.env` with long random passwords.
 3. Start the stack: `docker compose up -d --build`.
 4. Check it: `docker compose ps` and open `http://localhost:3000/api/health`.
 
 PostgreSQL is available only inside the Compose network and does not publish port 5432 on the host, so it does not conflict with another PostgreSQL container on the server. Data is stored in the named volume `codesentry-sast_sast_postgres_data`. Migrations run automatically before the application starts.
+
+The first login creates the initial administrator from `INITIAL_ADMIN_USERNAME`
+and `INITIAL_ADMIN_PASSWORD`. Further accounts are managed in the
+**Пользователи** section. When the service is exposed through HTTPS, set
+`AUTH_COOKIE_SECURE=true`; leave it `false` only for the current plain-HTTP
+deployment.
 
 To expose the application on another host port, set `APP_PORT` in `.env`. Do not delete the database volume unless the stored scan metadata is no longer needed.
