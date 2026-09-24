@@ -12,6 +12,7 @@ import type { AuthUser } from "../lib/auth";
 import { languageLabels, ruleCount, scanCode, scanFiles, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
 import { demoCode } from "../lib/demo-code";
 import { appVersion } from "../lib/version";
+import { scanCodeQuality, type SonarResult } from "../lib/sonar-lite";
 import {
   acceptedSourceExtensions, extractZip, isSupportedSourceFile, MAX_ARCHIVE_BYTES, MAX_SOURCE_FILE_BYTES, type SourceFile,
 } from "../lib/archive";
@@ -83,6 +84,8 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
   const [language, setLanguage] = useState("auto");
   const [dragging, setDragging] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [sonarScanning, setSonarScanning] = useState(false);
+  const [sonarResult, setSonarResult] = useState<SonarResult | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [filter, setFilter] = useState<Severity | "all">("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -91,10 +94,12 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
   const [archiveSkipped, setArchiveSkipped] = useState(0);
   const [activeSection, setActiveSection] = useState("overview");
   const [release, setRelease] = useState("");
+  const [selectedPractices, setSelectedPractices] = useState({ sast: true, sonar: true });
   const [historyQuery, setHistoryQuery] = useState("");
   const [history, setHistory] = useState<HistoricalScan[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(user.mustChangePassword);
+  const sonarSources = useMemo(() => archiveFiles.length ? archiveFiles.map((file) => ({ name: file.name, code: file.code })) : [{ name: filename || "code.txt", code }], [archiveFiles, code, filename]);
 
   const navigateToSection = useCallback((section: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -146,7 +151,7 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
       } else {
         setArchiveFiles([]); setArchiveSkipped(0); setCode(await file.text());
       }
-      setFilename(file.name); setFileSize(file.size); setResult(null); setNotice("");
+      setFilename(file.name); setFileSize(file.size); setResult(null); setSonarResult(null); setNotice("");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Не удалось прочитать файл. Попробуйте выбрать его ещё раз.");
     }
@@ -180,6 +185,34 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
     }
   };
 
+  const analyzeSonar = async () => {
+    if (!sonarSources.some((source) => source.code.trim())) { setNotice("Добавьте исходный код или загрузите файл, чтобы начать анализ."); return; }
+    if (!RELEASE_PATTERN.test(release)) { setNotice("Укажите релиз: 2–4 английские буквы, дефис и число от 1 до 9999. Например: test-456."); return; }
+    setNotice(""); setSonarScanning(true);
+    const next = scanCodeQuality(sonarSources);
+    setSonarResult(next);
+    try {
+      const response = await fetch("/api/sonar-scans", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ projectName: filename || "code.txt", release, result: next }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch (error) {
+      console.error("Failed to save Sonar scan", error);
+      setNotice("Sonar Lite завершил проверку, но сохранить результат в истории не удалось. Проверьте подключение к базе данных.");
+    } finally { setSonarScanning(false); }
+  };
+
+  const analyzeAll = async () => {
+    if (scanning || sonarScanning) return;
+    const practices = [selectedPractices.sast && analyze(), selectedPractices.sonar && analyzeSonar()].filter(Boolean);
+    if (!practices.length) {
+      setNotice("Выберите хотя бы одну практику для запуска.");
+      return;
+    }
+    await Promise.all(practices);
+  };
+
   const searchHistory = async () => {
     setHistoryLoading(true); setNotice("");
     try {
@@ -210,13 +243,13 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
   };
 
   const clear = () => {
-    setCode(""); setFilename(""); setFileSize(0); setResult(null); setNotice(""); setArchiveFiles([]); setArchiveSkipped(0);
+    setCode(""); setFilename(""); setFileSize(0); setResult(null); setSonarResult(null); setNotice(""); setArchiveFiles([]); setArchiveSkipped(0);
     if (inputRef.current) inputRef.current.value = "";
   };
 
   const loadDemo = () => {
     setCode(demoCode); setFilename("vulnerable-api.js"); setFileSize(new Blob([demoCode]).size);
-    setLanguage("auto"); setResult(null); setNotice(""); setArchiveFiles([]); setArchiveSkipped(0);
+    setLanguage("auto"); setResult(null); setSonarResult(null); setNotice(""); setArchiveFiles([]); setArchiveSkipped(0);
   };
 
   const exportReport = () => {
@@ -273,8 +306,6 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
     if (!result) return [];
     return filter === "all" ? result.findings : result.findings.filter((finding) => finding.severity === filter);
   }, [filter, result]);
-  const sonarSources = useMemo(() => archiveFiles.length ? archiveFiles.map((file) => ({ name: file.name, code: file.code })) : [{ name: filename || "code.txt", code }], [archiveFiles, code, filename]);
-
   return (
     <main className="app-shell" id="top">
       <aside className="sidebar" aria-label="Основная навигация">
@@ -297,7 +328,6 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
           <div className="topbar-actions"><span className="privacy-badge"><LockIcon size={14} />Код не загружается в облако</span><span className="account-name"><UserIcon size={14} />{user.displayName}</span><button className="topbar-button" onClick={() => setPasswordOpen(true)}>Сменить пароль</button><button className="topbar-button" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.reload(); }}>Выйти</button></div>
         </header>
         <div className="dashboard-content">
-          {user.role === "admin" && <UsersPanel currentUserId={user.id} />}
           <section className="overview" id="overview">
             <div className="page-heading"><div><span className="eyebrow">SECURITY CONTROL CENTER</span><h1>Обзор безопасности</h1><p>Запустите локальный SAST-анализ и получите карту рисков исходного кода.</p></div><button className="primary-cta" onClick={() => document.getElementById("scanner")?.scrollIntoView({ behavior: "smooth" })}><ScanIcon size={17} />Новый анализ</button></div>
             <div className="overview-grid">
@@ -312,36 +342,26 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
             <div className="history-search"><input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void searchHistory(); }} placeholder="test-456 или project.zip" aria-label="Поиск в истории" /><button onClick={() => void searchHistory()} disabled={historyLoading}>{historyLoading ? "Ищем…" : "Найти"}</button></div>
             {history.length > 0 && <div className="history-list">{history.map((scan) => <button key={scan.id} onClick={() => void openHistoricalScan(scan.id)}><strong>{scan.release}</strong><span>{scan.projectName}</span><span>{scan.summary.total} находок · {new Date(scan.createdAt).toLocaleString("ru-RU")}</span></button>)}</div>}
           </section>
-          <section className="workspace-shell" id="scanner" aria-label="Рабочая область анализатора">
-            <div className="panel-header"><div><span className="panel-dot" /><div><h2>Новый анализ</h2><p>Источник и конфигурация сканирования</p></div></div><span className="panel-time">LOCAL / READY</span></div>
-        <div className="input-grid">
-          <div className={`drop-zone ${dragging ? "dragging" : ""} ${filename ? "has-file" : ""}`}
-            onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()}
-            onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
-            onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) loadFile(file); }}>
-            <input ref={inputRef} type="file" accept={[".zip", ...acceptedSourceExtensions.map((ext) => `.${ext}`)].join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadFile(file); }} />
-            {filename ? <div className="selected-file"><span className="file-icon"><FileIcon size={26} /></span><div><strong>{filename}</strong><span>{archiveFiles.length ? `${archiveFiles.length} файлов с кодом${archiveSkipped ? ` · пропущено ${archiveSkipped}` : ""}` : `${formatBytes(fileSize)} · готов к анализу`}</span></div><button onClick={(event) => { event.stopPropagation(); clear(); }} aria-label="Удалить файл"><CloseIcon size={17} /></button></div>
-              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл или ZIP сюда</strong><span>или <u>выберите на компьютере</u></span><small>исходный код до 1 МБ · ZIP-архив до 10 МБ<br />до 500 файлов, распаковка локально</small></button>}
-          </div>
-          <div className="code-panel">
-            <div className="code-toolbar"><div><CodeIcon size={16} /><span>{archiveFiles.length ? `Предпросмотр: ${archiveFiles[0].name}` : filename || "Вставьте код вручную"}</span></div>{code && <button onClick={clear}>Очистить</button>}</div>
-            <div className="editor-wrap"><div className="line-numbers" aria-hidden="true">{code.split("\n").map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea value={code} readOnly={archiveFiles.length > 0} onChange={(event) => { setCode(event.target.value); setArchiveFiles([]); setArchiveSkipped(0); setResult(null); if (!filename) setFilename("code.txt"); }} spellCheck={false} aria-label="Исходный код" placeholder={"// Вставьте код для проверки\n// или загрузите файл слева"} /></div>
-          </div>
-        </div>
+          <section className="scan-controls-panel" aria-label="Запуск практик">
+            <div className="panel-header"><div><span className="panel-dot" /><div><h2>Запуск практик</h2><p>Укажите релиз и выберите проверки</p></div></div></div>
         {notice && <div className="notice" role="alert"><AlertIcon size={17} />{notice}</div>}
         <div className="action-bar">
           <label>Релиз<input className="release-input" value={release} onChange={(event) => setRelease(event.target.value)} placeholder="test-456" required pattern="[A-Za-z]{2,4}-[1-9][0-9]{0,3}" aria-describedby="release-hint" /></label>
           <small id="release-hint" className="release-hint">2–4 буквы A–Z, дефис, число 1–9999</small>
+          <fieldset className="practice-picker">
+            <legend>Практики</legend>
+            <label><input type="checkbox" checked={selectedPractices.sast} onChange={(event) => setSelectedPractices((current) => ({ ...current, sast: event.target.checked }))} />SAST</label>
+            <label><input type="checkbox" checked={selectedPractices.sonar} onChange={(event) => setSelectedPractices((current) => ({ ...current, sonar: event.target.checked }))} />Sonar Lite</label>
+          </fieldset>
+          <button className="scan-all-button" onClick={() => void analyzeAll()} disabled={scanning || sonarScanning}><ShieldIcon size={17} />{scanning || sonarScanning ? "Проверяем…" : "Запустить проверку"}</button>
           <label>Язык анализа<select value={language} disabled={archiveFiles.length > 0} onChange={(event) => setLanguage(event.target.value)}>{Object.entries(languageLabels).filter(([key]) => key !== "unknown" && key !== "multiple").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <button className="demo-button" onClick={loadDemo}><CodeIcon size={16} />Загрузить пример</button>
-          <button className="scan-button" onClick={analyze} disabled={scanning}>{scanning ? <><span className="spinner" />Анализируем…</> : <><ScanIcon size={18} />Запустить проверку</>}</button>
         </div>
           </section>
 
-          <SonarLite sources={sonarSources} />
-
-      {result && <section className="results" id="findings" ref={resultsRef} aria-live="polite">
-        <div className="results-heading"><div><span className="panel-dot warning" /><div><h2>Результат анализа · {release}</h2><p>{filename || "code.txt"} · {result.filesScanned ? `${result.filesScanned} файлов · ` : ""}{languageLabels[result.language]} · {result.scannedLines} строк</p></div></div><div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div></div>
+      <section className="results sast-panel" id="findings" ref={resultsRef} aria-live="polite">
+        <div className="results-heading"><div><span className="panel-dot warning" /><div><h2>SAST</h2><p>{result ? `Результат анализа · ${release} · ${filename || "code.txt"}` : "Статический анализ безопасности исходного кода"}</p></div></div>{result && <div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div>}</div>
+        {result ? <>
         <div className="summary-grid">
           <div className="score-card"><ScoreRing score={result.summary.score} /><div><span>Оценка безопасности</span><strong>{result.summary.score >= 85 ? "Хороший результат" : result.summary.score >= 60 ? "Требует внимания" : "Высокий риск"}</strong><p>На основе серьёзности и количества найденных проблем</p></div></div>
           <div className="severity-card critical"><span>Критические</span><strong>{result.summary.critical}</strong><small>Исправить немедленно</small></div>
@@ -357,9 +377,31 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
             : <div className="empty-findings"><span><CheckIcon size={28} /></span><h3>Проблем этой категории нет</h3><p>Попробуйте выбрать другой фильтр.</p></div>}
         </div>
         <div className="disclaimer"><AlertIcon size={16} /><p><strong>Важно:</strong> автоматический SAST-анализ не заменяет ручной аудит безопасности. Проверяйте контекст находок и дополняйте анализ dependency scanning, DAST и code review.</p></div>
-      </section>}
+        </> : <div className="sast-empty"><ShieldIcon size={30} /><h3>{code.trim() ? "Код готов к SAST-проверке" : "Сначала добавьте исходный код"}</h3><p>Выберите практику SAST в панели запуска — здесь появятся оценка безопасности, найденные уязвимости и рекомендации.</p></div>}
+      </section>
+
+          <section className="workspace-shell" id="scanner" aria-label="Рабочая область анализатора">
+            <div className="panel-header"><div><span className="panel-dot" /><div><h2>Новый анализ</h2><p>Источник и конфигурация сканирования</p></div></div><span className="panel-time">LOCAL / READY</span></div>
+        <div className="input-grid">
+          <div className={`drop-zone ${dragging ? "dragging" : ""} ${filename ? "has-file" : ""}`}
+            onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()}
+            onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
+            onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) loadFile(file); }}>
+            <input ref={inputRef} type="file" accept={[".zip", ...acceptedSourceExtensions.map((ext) => `.${ext}`)].join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadFile(file); }} />
+            {filename ? <div className="selected-file"><span className="file-icon"><FileIcon size={26} /></span><div><strong>{filename}</strong><span>{archiveFiles.length ? `${archiveFiles.length} файлов с кодом${archiveSkipped ? ` · пропущено ${archiveSkipped}` : ""}` : `${formatBytes(fileSize)} · готов к анализу`}</span></div><button onClick={(event) => { event.stopPropagation(); clear(); }} aria-label="Удалить файл"><CloseIcon size={17} /></button></div>
+              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл или ZIP сюда</strong><span>или <u>выберите на компьютере</u></span><small>исходный код до 1 МБ · ZIP-архив до 10 МБ<br />до 500 файлов, распаковка локально</small></button>}
+          </div>
+          <div className="code-panel">
+            <div className="code-toolbar"><div><CodeIcon size={16} /><span>{archiveFiles.length ? `Предпросмотр: ${archiveFiles[0].name}` : filename || "Вставьте код вручную"}</span></div>{code && <button onClick={clear}>Очистить</button>}</div>
+            <div className="editor-wrap"><div className="line-numbers" aria-hidden="true">{code.split("\n").map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea value={code} readOnly={archiveFiles.length > 0} onChange={(event) => { setCode(event.target.value); setArchiveFiles([]); setArchiveSkipped(0); setResult(null); setSonarResult(null); if (!filename) setFilename("code.txt"); }} spellCheck={false} aria-label="Исходный код" placeholder={"// Вставьте код для проверки\n// или загрузите файл слева"} /></div>
+          </div>
+        </div>
+          </section>
+
+          <SonarLite sources={sonarSources} result={sonarResult} />
 
           <section className="how" id="how"><div className="section-kicker">РАБОЧИЙ ПРОЦЕСС</div><h2>От исходника до исправления</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте источник</h3><p>Файл, ZIP-проект или фрагмент кода остаётся внутри браузера.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите движок</h3><p>Правила безопасной разработки проверят каждую строку локально.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Устраните риски</h3><p>Используйте CWE, точную строку и рекомендацию для каждой находки.</p></article></div></section>
+          {user.role === "admin" && <UsersPanel currentUserId={user.id} />}
           <footer><p>CodeSentry Local SAST · v{appVersion}</p><span>Система работает штатно</span><span className="footer-status"><i />LOCAL</span></footer>
         </div>
       </div>

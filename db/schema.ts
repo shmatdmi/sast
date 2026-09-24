@@ -65,3 +65,41 @@ export const scanFindings = pgTable("scan_findings", {
   index("scan_findings_severity_idx").on(table.severity),
   index("scan_findings_rule_id_idx").on(table.ruleId),
 ]);
+
+export type StoredSonarMetrics = {
+  files: number; lines: number; codeLines: number; commentLines: number; complexity: number;
+  duplicatedLines: number; duplicationPercent: number; debtMinutes: number;
+};
+export type StoredSonarCounts = { bug: number; vulnerability: number; code_smell: number };
+
+export const sonarScanRuns = pgTable("sonar_scan_runs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  projectName: text("project_name").notNull(),
+  release: text("release").notNull(),
+  status: text("status").notNull().default("completed"),
+  gate: text("gate").notNull(),
+  rating: text("rating").notNull(),
+  metrics: jsonb("metrics").$type<StoredSonarMetrics>().notNull(),
+  counts: jsonb("counts").$type<StoredSonarCounts>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("sonar_scan_runs_created_at_idx").on(table.createdAt),
+  index("sonar_scan_runs_release_idx").on(table.release),
+]);
+
+export const sonarScanIssues = pgTable("sonar_scan_issues", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sonarScanRunId: uuid("sonar_scan_run_id").notNull().references(() => sonarScanRuns.id, { onDelete: "cascade" }),
+  issueId: text("issue_id").notNull(),
+  type: text("type").notNull(),
+  severity: text("severity").notNull(),
+  filename: text("filename").notNull(),
+  line: integer("line").notNull(),
+  message: text("message").notNull(),
+  rule: text("rule").notNull(),
+  effortMinutes: integer("effort_minutes").notNull(),
+}, (table) => [
+  index("sonar_scan_issues_run_id_idx").on(table.sonarScanRunId),
+  index("sonar_scan_issues_severity_idx").on(table.severity),
+  index("sonar_scan_issues_rule_idx").on(table.rule),
+]);
