@@ -342,8 +342,24 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
             <div className="history-search"><input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void searchHistory(); }} placeholder="test-456 или project.zip" aria-label="Поиск в истории" /><button onClick={() => void searchHistory()} disabled={historyLoading}>{historyLoading ? "Ищем…" : "Найти"}</button></div>
             {history.length > 0 && <div className="history-list">{history.map((scan) => <button key={scan.id} onClick={() => void openHistoricalScan(scan.id)}><strong>{scan.release}</strong><span>{scan.projectName}</span><span>{scan.summary.total} находок · {new Date(scan.createdAt).toLocaleString("ru-RU")}</span></button>)}</div>}
           </section>
-          <section className="scan-controls-panel" aria-label="Запуск практик">
-            <div className="panel-header"><div><span className="panel-dot" /><div><h2>Запуск практик</h2><p>Укажите релиз и выберите проверки</p></div></div></div>
+          <section className="workspace-shell" id="scanner" aria-label="Новый анализ">
+            <div className="panel-header"><div><span className="panel-dot" /><div><h2>Новый анализ</h2><p>Источник, конфигурация и запуск практик</p></div></div><span className="panel-time">LOCAL / READY</span></div>
+        <div className="input-grid">
+          <div className={`drop-zone ${dragging ? "dragging" : ""} ${filename ? "has-file" : ""}`}
+            onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()}
+            onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
+            onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) loadFile(file); }}>
+            <input ref={inputRef} type="file" accept={[".zip", ...acceptedSourceExtensions.map((ext) => `.${ext}`)].join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadFile(file); }} />
+            {filename ? <div className="selected-file"><span className="file-icon"><FileIcon size={26} /></span><div><strong>{filename}</strong><span>{archiveFiles.length ? `${archiveFiles.length} файлов с кодом${archiveSkipped ? ` · пропущено ${archiveSkipped}` : ""}` : `${formatBytes(fileSize)} · готов к анализу`}</span></div><button onClick={(event) => { event.stopPropagation(); clear(); }} aria-label="Удалить файл"><CloseIcon size={17} /></button></div>
+              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл или ZIP сюда</strong><span>или <u>выберите на компьютере</u></span><small>исходный код до 1 МБ · ZIP-архив до 10 МБ<br />до 500 файлов, распаковка локально</small></button>}
+          </div>
+          <div className="code-panel">
+            <div className="code-toolbar"><div><CodeIcon size={16} /><span>{archiveFiles.length ? `Предпросмотр: ${archiveFiles[0].name}` : filename || "Вставьте код вручную"}</span></div>{code && <button onClick={clear}>Очистить</button>}</div>
+            <div className="editor-wrap"><div className="line-numbers" aria-hidden="true">{code.split("\n").map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea value={code} readOnly={archiveFiles.length > 0} onChange={(event) => { setCode(event.target.value); setArchiveFiles([]); setArchiveSkipped(0); setResult(null); setSonarResult(null); if (!filename) setFilename("code.txt"); }} spellCheck={false} aria-label="Исходный код" placeholder={"// Вставьте код для проверки\n// или загрузите файл слева"} /></div>
+          </div>
+        </div>
+            <div className="practice-launch">
+              <div className="practice-heading"><span className="panel-dot" /><div><h3>Запуск практик</h3><p>Укажите релиз и выберите проверки</p></div></div>
         {notice && <div className="notice" role="alert"><AlertIcon size={17} />{notice}</div>}
         <div className="action-bar">
           <label>Релиз<input className="release-input" value={release} onChange={(event) => setRelease(event.target.value)} placeholder="test-456" required pattern="[A-Za-z]{2,4}-[1-9][0-9]{0,3}" aria-describedby="release-hint" /></label>
@@ -357,6 +373,7 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
           <label>Язык анализа<select value={language} disabled={archiveFiles.length > 0} onChange={(event) => setLanguage(event.target.value)}>{Object.entries(languageLabels).filter(([key]) => key !== "unknown" && key !== "multiple").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <button className="demo-button" onClick={loadDemo}><CodeIcon size={16} />Загрузить пример</button>
         </div>
+            </div>
           </section>
 
       <section className="results sast-panel" id="findings" ref={resultsRef} aria-live="polite">
@@ -379,24 +396,6 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
         <div className="disclaimer"><AlertIcon size={16} /><p><strong>Важно:</strong> автоматический SAST-анализ не заменяет ручной аудит безопасности. Проверяйте контекст находок и дополняйте анализ dependency scanning, DAST и code review.</p></div>
         </> : <div className="sast-empty"><ShieldIcon size={30} /><h3>{code.trim() ? "Код готов к SAST-проверке" : "Сначала добавьте исходный код"}</h3><p>Выберите практику SAST в панели запуска — здесь появятся оценка безопасности, найденные уязвимости и рекомендации.</p></div>}
       </section>
-
-          <section className="workspace-shell" id="scanner" aria-label="Рабочая область анализатора">
-            <div className="panel-header"><div><span className="panel-dot" /><div><h2>Новый анализ</h2><p>Источник и конфигурация сканирования</p></div></div><span className="panel-time">LOCAL / READY</span></div>
-        <div className="input-grid">
-          <div className={`drop-zone ${dragging ? "dragging" : ""} ${filename ? "has-file" : ""}`}
-            onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()}
-            onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }}
-            onDrop={(event) => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file) loadFile(file); }}>
-            <input ref={inputRef} type="file" accept={[".zip", ...acceptedSourceExtensions.map((ext) => `.${ext}`)].join(",")} onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadFile(file); }} />
-            {filename ? <div className="selected-file"><span className="file-icon"><FileIcon size={26} /></span><div><strong>{filename}</strong><span>{archiveFiles.length ? `${archiveFiles.length} файлов с кодом${archiveSkipped ? ` · пропущено ${archiveSkipped}` : ""}` : `${formatBytes(fileSize)} · готов к анализу`}</span></div><button onClick={(event) => { event.stopPropagation(); clear(); }} aria-label="Удалить файл"><CloseIcon size={17} /></button></div>
-              : <button className="drop-action" onClick={() => inputRef.current?.click()}><span className="upload-icon"><UploadIcon size={25} /></span><strong>Перетащите файл или ZIP сюда</strong><span>или <u>выберите на компьютере</u></span><small>исходный код до 1 МБ · ZIP-архив до 10 МБ<br />до 500 файлов, распаковка локально</small></button>}
-          </div>
-          <div className="code-panel">
-            <div className="code-toolbar"><div><CodeIcon size={16} /><span>{archiveFiles.length ? `Предпросмотр: ${archiveFiles[0].name}` : filename || "Вставьте код вручную"}</span></div>{code && <button onClick={clear}>Очистить</button>}</div>
-            <div className="editor-wrap"><div className="line-numbers" aria-hidden="true">{code.split("\n").map((_, index) => <span key={index}>{index + 1}</span>)}</div><textarea value={code} readOnly={archiveFiles.length > 0} onChange={(event) => { setCode(event.target.value); setArchiveFiles([]); setArchiveSkipped(0); setResult(null); setSonarResult(null); if (!filename) setFilename("code.txt"); }} spellCheck={false} aria-label="Исходный код" placeholder={"// Вставьте код для проверки\n// или загрузите файл слева"} /></div>
-          </div>
-        </div>
-          </section>
 
           <SonarLite sources={sonarSources} result={sonarResult} />
 
