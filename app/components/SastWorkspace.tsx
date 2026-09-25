@@ -262,6 +262,16 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
     link.click(); URL.revokeObjectURL(link.href);
   };
 
+  const exportSonarReport = () => {
+    if (!sonarResult) return;
+    const report = { tool: "CodeSentry Sonar Lite", version: appVersion, release, scannedAt: new Date().toISOString(), file: filename || "code.txt", ...sonarResult };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${(filename || "scan").replace(/\.[^.]+$/, "")}-sonar-report.json`;
+    link.click(); URL.revokeObjectURL(link.href);
+  };
+
   const exportSarif = () => {
     if (!result) return;
     const uniqueRules = [...new Map(result.findings.map((finding) => [finding.ruleId, finding])).values()];
@@ -397,7 +407,7 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
         </> : <div className="sast-empty"><ShieldIcon size={30} /><h3>{code.trim() ? "Код готов к SAST-проверке" : "Сначала добавьте исходный код"}</h3><p>Выберите практику SAST в панели запуска — здесь появятся оценка безопасности, найденные уязвимости и рекомендации.</p></div>}
       </section>
 
-          <SonarLite sources={sonarSources} result={sonarResult} />
+          <SonarLite sources={sonarSources} result={sonarResult} onExport={exportSonarReport} />
 
           <section className="how" id="how"><div className="section-kicker">РАБОЧИЙ ПРОЦЕСС</div><h2>От исходника до исправления</h2><div className="how-grid"><article><span>01</span><FileIcon size={22} /><h3>Добавьте источник</h3><p>Файл, ZIP-проект или фрагмент кода остаётся внутри браузера.</p></article><article><span>02</span><ScanIcon size={22} /><h3>Запустите движок</h3><p>Правила безопасной разработки проверят каждую строку локально.</p></article><article><span>03</span><ShieldIcon size={22} /><h3>Устраните риски</h3><p>Используйте CWE, точную строку и рекомендацию для каждой находки.</p></article></div></section>
           {user.role === "admin" && <UsersPanel currentUserId={user.id} />}
