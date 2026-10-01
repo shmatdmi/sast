@@ -350,7 +350,7 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
           <section className="history-panel" id="history">
             <div className="panel-header"><div><span className="panel-dot" /><div><h2>История сканирований</h2><p>Поиск по релизу или имени проекта</p></div></div></div>
             <div className="history-search"><input value={historyQuery} onChange={(event) => setHistoryQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void searchHistory(); }} placeholder="test-456 или project.zip" aria-label="Поиск в истории" /><button onClick={() => void searchHistory()} disabled={historyLoading}>{historyLoading ? "Ищем…" : "Найти"}</button></div>
-            {history.length > 0 && <div className="history-list">{history.map((scan) => <button key={scan.id} onClick={() => void openHistoricalScan(scan.id)}><strong>{scan.release}</strong><span>{scan.projectName}</span><span>{scan.summary.total} находок · {new Date(scan.createdAt).toLocaleString("ru-RU")}</span></button>)}</div>}
+            {history.length > 0 && <div className="history-list">{history.map((scan) => <button key={scan.id} onClick={() => void openHistoricalScan(scan.id)}><strong>{scan.release}</strong><span>{scan.projectName}</span><span>{scan.scannedLines.toLocaleString("ru-RU")} строк · {scan.filesScanned} файлов · {scan.summary.total} находок · {new Date(scan.createdAt).toLocaleString("ru-RU")}</span></button>)}</div>}
           </section>
           <section className="workspace-shell" id="scanner" aria-label="Новый анализ">
             <div className="panel-header"><div><span className="panel-dot" /><div><h2>Новый анализ</h2><p>Источник, конфигурация и запуск практик</p></div></div><span className="panel-time">LOCAL / READY</span></div>
@@ -389,6 +389,7 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
       <section className="results sast-panel" id="findings" ref={resultsRef} aria-live="polite">
         <div className="results-heading"><div><span className="panel-dot warning" /><div><h2>SAST</h2><p>{result ? `Результат анализа · ${release} · ${filename || "code.txt"}` : "Статический анализ безопасности исходного кода"}</p></div></div>{result && <div><button className="export-button" onClick={exportSarif}><DownloadIcon size={16} />SARIF</button><button className="export-button" onClick={exportReport}><DownloadIcon size={16} />JSON</button></div>}</div>
         {result ? <>
+        <p title="Все физические строки проверенных файлов, включая пустые строки и комментарии. Пропущенные файлы архива не учитываются.">Проверено строк: <strong>{result.scannedLines.toLocaleString("ru-RU")}</strong> · Файлов: <strong>{result.filesScanned ?? 1}</strong> · Включая пустые строки и комментарии</p>
         <div className="summary-grid">
           <div className="score-card"><ScoreRing score={result.summary.score} /><div><span>Оценка безопасности</span><strong>{result.summary.score >= 85 ? "Хороший результат" : result.summary.score >= 60 ? "Требует внимания" : "Высокий риск"}</strong><p>На основе серьёзности и количества найденных проблем</p></div></div>
           <div className="severity-card critical"><span>Критические</span><strong>{result.summary.critical}</strong><small>Исправить немедленно</small></div>

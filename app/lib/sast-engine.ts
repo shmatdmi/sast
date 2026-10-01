@@ -521,6 +521,13 @@ function calculateScore(findings: Finding[]): number {
   return Math.max(0, 100 - Math.min(100, penalty));
 }
 
+/** Physical source lines, including blanks/comments, without a phantom line after EOF. */
+export function countSourceLines(code: string): number {
+  if (!code.length) return 0;
+  const normalized = code.replace(/\r\n?/g, "\n");
+  return normalized.split("\n").length - (normalized.endsWith("\n") ? 1 : 0);
+}
+
 export function scanCode(code: string, filename = "code.txt", selectedLanguage = "auto"): ScanResult {
   const started = performance.now();
   const language = selectedLanguage === "auto" ? detectLanguage(filename, code) : selectedLanguage;
@@ -647,7 +654,8 @@ export function scanCode(code: string, filename = "code.txt", selectedLanguage =
 
   return {
     language,
-    scannedLines: lines.length,
+    scannedLines: countSourceLines(normalizedCode),
+    filesScanned: 1,
     durationMs: Math.max(1, Math.round(performance.now() - started)),
     summary,
     findings,

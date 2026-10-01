@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { detectLanguage, ruleCount, scanCode, scanFiles } from "../app/lib/sast-engine.ts";
+import { countSourceLines, detectLanguage, ruleCount, scanCode, scanFiles } from "../app/lib/sast-engine.ts";
+
+test("counts physical source lines consistently across line endings and EOF", () => {
+  for (const [source, expected] of [["", 0], ["x", 1], ["x\n", 1], ["\n", 1], ["x\n\n", 2], ["// comment\n\nx", 3], ["x\r\ny\r\n", 2], ["x\ry\r", 2]] as const) {
+    assert.equal(countSourceLines(source), expected);
+    assert.equal(scanCode(source).scannedLines, expected);
+  }
+  const result = scanFiles([{ name: "a.js", code: "x\n" }, { name: "b.py", code: "# comment\r\n\r\ny" }, { name: "empty.ts", code: "" }]);
+  assert.equal(result.scannedLines, 4);
+  assert.equal(result.filesScanned, 3);
+  assert.equal(scanFiles([]).scannedLines, 0);
+});
 
 test("detects supported languages by filename and content", () => {
   assert.equal(detectLanguage("service.py", "print('ok')"), "python");

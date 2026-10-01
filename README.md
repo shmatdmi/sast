@@ -20,6 +20,10 @@ npm run dev
 
 - загрузка файла до 1 МБ, ZIP-архива проекта до 10 МБ или вставка фрагмента кода;
 - локальная распаковка и совместный анализ до 500 исходников из ZIP с путём файла в JSON/SARIF;
+- подсчёт физических строк проверенных исходников (включая комментарии и пустые строки)
+  с отображением в результатах SAST и истории и сохранением в `scan_runs.scanned_lines`
+  после завершения сканирования; пустой файл содержит 0 строк, завершающий перенос
+  не добавляет строку, пропущенные файлы ZIP не учитываются;
 - автоопределение JavaScript, TypeScript, Python, Java, PHP, Go, C#, Ruby,
   Kotlin, Rust, Swift, Scala, Shell и конфигурационных файлов;
 - более 50 правил для поиска секретов, SQL/NoSQL/command/template-инъекций,
@@ -53,6 +57,31 @@ npm test
 ```
 
 Автоматический анализ не заменяет ручной аудит, dependency scanning и code review.
+
+## API проверки ZIP-архива
+
+Авторизованный пользователь может отправить архив исходного кода в
+`POST /api/scans/archive` как `multipart/form-data`. Обязательные поля:
+
+- `archive` — ZIP-архив размером до 10 МБ;
+- `release` — идентификатор вида `test-456`.
+
+Поле `projectName` необязательно; без него используется имя архива. Результат
+сохраняется в истории и возвращается в ответе вместе с `scanId`, сводкой и
+массивом находок.
+
+```bash
+curl -c cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"your-password"}' \
+  http://localhost/api/auth/login
+
+curl -b cookies.txt \
+  -F "archive=@project.zip;type=application/zip" \
+  -F "release=TEST-1" \
+  -F "projectName=Example project" \
+  http://localhost/api/scans/archive
+```
 
 ## Docker Compose + PostgreSQL
 
