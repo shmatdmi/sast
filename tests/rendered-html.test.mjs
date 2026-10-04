@@ -36,3 +36,26 @@ test("JSON scan API requires authentication before processing sources", async ()
   assert.equal(response.status, 401);
   assert.deepEqual(await response.json(), { error: "Требуется авторизация" });
 });
+
+test("ZIP uploads up to 10 MiB reach API authentication", async () => {
+  for (const size of [3250586, 10 * 1024 * 1024]) {
+    const form = new FormData();
+    form.set("archive", new Blob([new Uint8Array(size)]), "project.zip");
+    form.set("release", "TEST-1");
+    const response = await render(new Request("https://codesentry.example/api/scans/archive", {
+      method: "POST", body: form,
+    }));
+    assert.equal(response.status, 401);
+    assert.deepEqual(await response.json(), { error: "Требуется авторизация" });
+  }
+});
+
+test("multipart uploads declared above the framework limit are rejected", async () => {
+  const form = new FormData();
+  form.set("archive", new Blob([new Uint8Array(11 * 1024 * 1024)]), "project.zip");
+  const response = await render(new Request("https://codesentry.example/api/scans/archive", {
+    method: "POST", body: form,
+    headers: { "content-length": String(11 * 1024 * 1024 + 1024) },
+  }));
+  assert.equal(response.status, 413);
+});

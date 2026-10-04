@@ -27,11 +27,21 @@ npm run dev
   не добавляет строку, пропущенные файлы ZIP не учитываются;
 - автоопределение JavaScript, TypeScript, Python, Java, PHP, Go, C#, Ruby,
   Kotlin, Rust, Swift, Scala, Shell и конфигурационных файлов;
-- более 50 правил для поиска секретов, SQL/NoSQL/command/template-инъекций,
+- 400 статических правил для поиска секретов, SQL/NoSQL/command/template/LDAP-инъекций,
   XSS, SSRF, XXE, path traversal, prototype pollution, небезопасной
   десериализации, слабой криптографии, TLS/JWT/cookie-ошибок и опасных
   container/runtime-настроек;
-- сигнатуры токенов AWS, GitHub, Slack, JWT, приватных ключей и URI баз данных;
+- проверки XMLDecoder, Newtonsoft.Json TypeNameHandling, обработки DTD,
+  экранирования Jinja, SSL-контекстов Python, TLS в PHP cURL, shell в Node.js,
+  монтирования Docker socket, опасных capabilities и отключения seccomp;
+- сигнатуры токенов AWS, GitHub, GitLab, Slack, npm, Stripe, SendGrid, Google API,
+  Azure Storage, JWT, приватных ключей и URI баз данных;
+- проверки CSRF в Django/Spring/Rails/ASP.NET, Electron и Android WebView,
+  SSH host keys, IAM/S3 policies и GitHub Actions;
+  [каталог набора из 86 правил](docs/security-rules.md) и [каталог ещё 200 правил](docs/security-rules-expansion.md);
+- загрузка Vue/Svelte и конфигураций `.conf`, `.ini`, `.toml`, `.tf`, `.hcl`, `.plist`;
+- дополнительные проверки JWT claims/signatures, password hashing, Java XML/JNDI/XSLT,
+  Rails/Play/Actix, gRPC, Phar/Psych/Oj и конфигураций Nginx/HAProxy/Redis/MongoDB/Elasticsearch;
 - многострочные правила и лёгкий межстрочный source-to-sink анализ потоков
   недоверенных данных;
 - привязка находок к CWE и OWASP;

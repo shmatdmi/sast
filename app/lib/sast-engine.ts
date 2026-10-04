@@ -1,3 +1,6 @@
+import { createExtendedRules } from "./sast-rules.ts";
+import { createExpansionRules } from "./sast-rules-expansion.ts";
+
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
 export type Finding = {
@@ -38,7 +41,7 @@ export type ScanResult = {
   filesScanned?: number;
 };
 
-type Rule = {
+export type Rule = {
   id: string;
   languages: string[];
   title: string;
@@ -321,11 +324,11 @@ function addRule(
   cwe: string,
   pattern: RegExp,
   recommendation: string,
-  options: Pick<Rule, "confidence" | "exclude" | "category" | "scope"> = {},
+  options: Partial<Pick<Rule, "confidence" | "exclude" | "category" | "scope" | "owasp">> = {},
 ) {
   rules.push({
     id, languages, title, description, severity, cwe, pattern, recommendation,
-    owasp: "A03:2021",
+    owasp: options.owasp ?? "A03:2021",
     confidence: options.confidence ?? "high",
     references: [`https://cwe.mitre.org/data/definitions/${cwe.replace("CWE-", "")}.html`],
     exclude: options.exclude,
@@ -468,6 +471,81 @@ addRule("CRYPTO003", ALL, "Статический IV или nonce", "IV/nonce з
 addRule("AUTH001", ALL, "Сравнение секрета без constant-time", "Секрет или подпись сравнивается обычным оператором.", "medium", "CWE-208",
   /(?:password|token|signature|hmac|secret)\s*(?:===?|!==?)\s*[A-Za-z_$"']/i, "Для MAC, токенов и ключей используйте constant-time compare.", { confidence: "medium", category: "authentication" });
 
+addRule("RS001", ["rust"], "Команда через системную оболочку", "Rust-приложение запускает shell с текстовой командой, что повышает риск командной инъекции.", "high", "CWE-78",
+  /Command::new\s*\(\s*"(?:sh|bash)"\s*\)[\s\S]{0,240}\.arg\s*\(\s*"-c"\s*\)/, "Запускайте фиксированный бинарник напрямую и передавайте проверенные аргументы отдельными вызовами arg/args.", { category: "injection", scope: "file" });
+addRule("RS002", ["rust"], "Отключена проверка TLS", "HTTP-клиент принимает недействительные TLS-сертификаты.", "high", "CWE-295",
+  /danger_accept_invalid_(?:certs|hostnames)\s*\(\s*true\s*\)/, "Включите проверку сертификата и имени узла, при необходимости настройте доверенный корневой сертификат.", { category: "transport" });
+addRule("RS003", ["rust"], "Небезопасная десериализация бинарных данных", "Десериализация bincode из недоверенного источника может вызвать отказ в обслуживании или неконтролируемое выделение памяти.", "medium", "CWE-502",
+  /\bbincode::deserialize(?:_from)?\s*\(/, "Ограничьте размер входа, применяйте лимиты bincode и проверяйте структуру результата.", { confidence: "medium", category: "deserialization" });
+addRule("RS004", ["rust"], "SQL-запрос через format!", "SQL-команда формируется строковой интерполяцией перед выполнением.", "critical", "CWE-89",
+  /(?:query|execute|query_as)\s*\(\s*&?format!\s*\(/, "Используйте параметризованный запрос и bind-параметры вместо format!.", { confidence: "medium", category: "injection" });
+
+addRule("SWIFT001", ["swift"], "Команда через shell", "Process запускает системную оболочку с командной строкой.", "high", "CWE-78",
+  /executableURL\s*=\s*URL\s*\(\s*fileURLWithPath:\s*"\/(?:bin\/(?:sh|bash)|usr\/bin\/env)"\s*\)[\s\S]{0,320}(?:"-c"|"bash"|"sh")/, "Запускайте требуемый executable напрямую и передавайте проверенные аргументы массивом.", { confidence: "medium", category: "injection", scope: "file" });
+addRule("SWIFT002", ["swift"], "Отключена проверка TLS", "Обработчик URLSession безусловно принимает серверный сертификат.", "high", "CWE-295",
+  /useCredential\s*,\s*credential:\s*URLCredential\s*\(\s*trust:/, "Используйте performDefaultHandling или явно проверьте trust, hostname и цепочку сертификатов.", { confidence: "medium", category: "transport" });
+addRule("SWIFT003", ["swift"], "Слабая криптографическая хеш-функция", "Приложение использует MD5 или SHA-1.", "medium", "CWE-327",
+  /\b(?:Insecure\.)?(?:MD5|SHA1)\.(?:hash|init)\s*\(|CC_(?:MD5|SHA1)\s*\(/, "Используйте SHA-256/512 для целостности; для паролей применяйте специализированный password hashing.", { category: "crypto" });
+addRule("SWIFT004", ["swift"], "Динамический JavaScript в WebView", "WKWebView выполняет динамически сформированную строку JavaScript.", "high", "CWE-95",
+  /evaluateJavaScript\s*\([^\n)]*(?:\+|\\\(|interpolat)/, "Не собирайте JavaScript из недоверенных данных; используйте структурированный message handler и строгую проверку значений.", { confidence: "medium", category: "injection" });
+
+addRule("SCALA001", ["scala"], "Командная инъекция Scala", "Shell-команда формируется интерполяцией перед запуском процесса.", "critical", "CWE-78",
+  /s["'][^"'\n]*\$[^"'\n]*["']\s*\.!{1,2}\b|Process\s*\(\s*s["'][^"'\n]*\$/, "Передавайте executable и проверенные аргументы последовательностью без shell-интерпретации.", { confidence: "medium", category: "injection" });
+addRule("SCALA002", ["scala"], "Небезопасная Java-десериализация", "ObjectInputStream может создать опасную цепочку объектов из недоверенных данных.", "critical", "CWE-502",
+  /\b(?:new\s+)?ObjectInputStream\s*\(|\.readObject\s*\(/, "Откажитесь от Java serialization либо используйте строгий ObjectInputFilter allowlist.", { category: "deserialization" });
+addRule("SCALA003", ["scala"], "SQL-запрос через интерполяцию", "SQL-команда строится из интерполированной строки.", "critical", "CWE-89",
+  /(?:executeQuery|executeUpdate|execute|sql)\s*\(\s*s["'][^"'\n]*\$/, "Используйте prepared statement или типобезопасные bind-параметры.", { confidence: "medium", category: "injection" });
+
+addRule("SH001", ["shell"], "Выполнение загруженного скрипта", "Данные из сети напрямую передаются интерпретатору команд.", "critical", "CWE-494",
+  /\b(?:curl|wget)\b[^\n|]*(?:\||-O\s*-)[^\n]*\b(?:sh|bash|zsh)\b/, "Загрузите файл отдельно, проверьте подпись или хеш и только затем запускайте зафиксированную версию.", { category: "supply-chain" });
+addRule("SH002", ["shell"], "eval с подстановкой переменной", "eval повторно интерпретирует содержимое переменной как shell-код.", "critical", "CWE-95",
+  /\beval\s+["']?\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/, "Удалите eval; используйте массив аргументов, case или явное сопоставление разрешённых команд.", { category: "injection" });
+addRule("SH003", ["shell"], "Небезопасное имя временного файла", "mktemp -u возвращает имя без атомарного создания файла и допускает race condition.", "medium", "CWE-377",
+  /\bmktemp\s+(?:[^\n]*\s)?-u\b|\bmktemp\s+-u\b/, "Создавайте временный файл обычным mktemp и сохраняйте созданный путь с ограниченными правами.", { category: "filesystem" });
+addRule("SH004", ["shell"], "Отключена проверка TLS", "curl или wget принимает недоверенный TLS-сертификат.", "high", "CWE-295",
+  /\b(?:curl\s+[^\n]*(?:--insecure|-k)\b|wget\s+[^\n]*--no-check-certificate\b)/, "Удалите отключение проверки TLS и настройте доверенный CA bundle.", { category: "transport" });
+
+addRule("CFG004", ["config"], "Контейнер запускается от root", "Dockerfile или конфигурация контейнера явно выбирает пользователя root.", "high", "CWE-250",
+  /^(?:\s*USER\s+(?:root|0)\s*$|\s*runAsUser\s*:\s*0\s*$)/im, "Создайте непривилегированного пользователя и запускайте процесс с минимальными правами.", { category: "configuration", scope: "file" });
+addRule("CFG005", ["config"], "Разрешено повышение привилегий", "Контейнер Kubernetes разрешает процессу получать дополнительные привилегии.", "high", "CWE-250",
+  /allowPrivilegeEscalation\s*:\s*true/i, "Установите allowPrivilegeEscalation: false и удалите ненужные capabilities.", { category: "configuration" });
+addRule("CFG006", ["config"], "Host namespace в Kubernetes", "Pod использует сетевое, процессное или IPC-пространство имён узла.", "high", "CWE-250",
+  /\bhost(?:Network|PID|IPC)\s*:\s*true/i, "Изолируйте pod от namespace узла; включайте host namespace только для обоснованных системных компонентов.", { category: "configuration" });
+addRule("CFG007", ["config"], "Публичный доступ из любой сети", "Сетевое правило разрешает входящий доступ со всех IPv4-адресов.", "high", "CWE-284",
+  /(?:cidr_blocks?|sourceRanges?|ipBlock|CidrIp)\s*[:=][^\n]*(?:0\.0\.0\.0\/0)|-\s*0\.0\.0\.0\/0/i, "Ограничьте CIDR доверенными сетями и откройте только необходимые порты.", { confidence: "medium", category: "configuration" });
+addRule("CFG008", ["config"], "Плавающий тег контейнерного образа", "Конфигурация использует изменяемый тег latest и не фиксирует содержимое образа.", "low", "CWE-1104",
+  /\bimage\s*:\s*["']?[A-Za-z0-9._\/-]+:latest\b/i, "Закрепите образ по неизменяемому digest или конкретной проверенной версии.", { category: "supply-chain" });
+
+addRule("JS020", ["javascript", "typescript"], "Отключена проверка TLS в Node.js", "HTTP-запросы принимают недействительные TLS-сертификаты.", "high", "CWE-295",
+  /\brejectUnauthorized\s*:\s*false\b/, "Оставьте проверку сертификата включённой и настройте доверенный CA.", { category: "transport" });
+addRule("PY020", ["python"], "Отключена проверка TLS в requests", "Клиент requests принимает недействительные TLS-сертификаты.", "high", "CWE-295",
+  /\brequests\.(?:get|post|put|patch|delete|request)\s*\([^\n]*\bverify\s*=\s*False\b/, "Удалите verify=False и настройте доверенный CA.", { category: "transport" });
+addRule("GO020", ["go"], "Отключена проверка TLS в Go", "TLS-клиент пропускает проверку сертификата и имени сервера.", "high", "CWE-295",
+  /\bInsecureSkipVerify\s*:\s*true\b/, "Оставьте проверку TLS включённой и задайте RootCAs при необходимости.", { category: "transport" });
+addRule("JAVA020", ["java"], "Небезопасный генератор случайных чисел", "java.util.Random используется для генерации токена или ключа.", "medium", "CWE-338",
+  /\b(?:token|secret|key|nonce)\w*\s*=\s*(?:new\s+)?Random\s*\(/i, "Для секретов используйте java.security.SecureRandom.", { confidence: "medium", category: "crypto" });
+
+addRule("JS021", ["javascript", "typescript"], "Запуск процесса через shell", "spawn или execFile явно включает оболочку; недоверенные аргументы могут стать командами.", "high", "CWE-78",
+  /\b(?:spawn|spawnSync|execFile|execFileSync)\s*\([^;{}]{0,600}\{[^{}]{0,400}\bshell\s*:\s*true\b/, "Используйте shell: false, фиксированный executable и массив проверенных аргументов.", { confidence: "medium", category: "injection", scope: "file" });
+addRule("PY021", ["python"], "Небезопасный SSL-контекст", "SSL-контекст создаётся без проверки сертификата либо проверка явно отключена.", "high", "CWE-295",
+  /\bssl\._create_unverified_context\s*\(|\bverify_mode\s*=\s*ssl\.CERT_NONE\b/, "Используйте ssl.create_default_context(), CERT_REQUIRED и проверку имени сервера.", { category: "transport", scope: "file", owasp: "A02:2021" });
+addRule("PY022", ["python"], "Отключено экранирование Jinja", "Jinja Environment явно отключает автоматическое экранирование; при выводе недоверенных данных в HTML возможен XSS.", "high", "CWE-79",
+  /\b(?:jinja2\.)?Environment\s*\((?:[^();]|\([^()]*\)){0,400}?\bautoescape\s*=\s*False\b/, "Для HTML-шаблонов включите autoescape или select_autoescape(['html', 'htm', 'xml']).", { confidence: "medium", category: "xss", scope: "file" });
+addRule("JAVA021", ["java", "kotlin"], "Небезопасная десериализация XMLDecoder", "XMLDecoder создаёт объекты и вызывает методы из XML; недоверенный документ может выполнить код.", "critical", "CWE-502",
+  /\b(?:new\s+(?:java\.beans\.)?XMLDecoder|java\.beans\.XMLDecoder|XMLDecoder)\s*\(/, "Не передавайте недоверенные документы в XMLDecoder; используйте формат данных со строгой схемой без создания произвольных объектов.", { category: "deserialization", owasp: "A08:2021" });
+addRule("CS004", ["csharp"], "Разрешены типы из JSON", "Newtonsoft.Json TypeNameHandling разрешает создавать типы, указанные в JSON; без строгого binder это опасно для недоверенного ввода.", "high", "CWE-502",
+  /\bTypeNameHandling\s*=\s*(?:Newtonsoft\.Json\.)?TypeNameHandling\.(?:All|Auto|Objects|Arrays)\b/, "Установите TypeNameHandling.None; при необходимой полиморфности применяйте строгий allowlist в ISerializationBinder.", { confidence: "medium", category: "deserialization", scope: "file", owasp: "A08:2021" });
+addRule("CS005", ["csharp"], "Разрешена обработка DTD", "XML-парсер разрешает DTD; внешние сущности и расширение сущностей требуют дополнительных ограничений.", "medium", "CWE-611",
+  /\bDtdProcessing\s*=\s*(?:System\.Xml\.)?DtdProcessing\.Parse\b/, "Установите DtdProcessing.Prohibit и XmlResolver = null; ограничьте размер документа и расширение сущностей.", { confidence: "medium", category: "xxe", scope: "file", owasp: "A05:2021" });
+addRule("PHP008", ["php"], "Отключена проверка TLS в cURL", "cURL явно отключает проверку сертификата или имени TLS-сервера.", "high", "CWE-295",
+  /\bCURLOPT_SSL_VERIFY(?:PEER|HOST)\s*(?:,|=>)\s*(?:false|0)\b/i, "Включите CURLOPT_SSL_VERIFYPEER и установите CURLOPT_SSL_VERIFYHOST = 2; настройте доверенный CA.", { category: "transport", scope: "file", owasp: "A02:2021" });
+addRule("CFG009", ["config"], "Docker socket доступен контейнеру", "Конфигурация монтирует сокет Docker daemon; доступ к нему может дать управление контейнерами и узлом даже при read-only mount.", "high", "CWE-250",
+  /^\s*(?:-\s*["']?\/(?:var\/)?run\/docker\.sock\s*:|(?:source|path)\s*:\s*["']?\/(?:var\/)?run\/docker\.sock["']?\s*(?:#.*)?$)/m, "Уберите Docker socket из контейнера или используйте отдельный proxy с минимальным набором разрешённых API.", { category: "configuration", scope: "file", owasp: "A05:2021" });
+addRule("CFG010", ["config"], "Опасные capabilities контейнера", "Контейнер получает SYS_ADMIN или полный набор capabilities, что значительно расширяет его привилегии.", "high", "CWE-250",
+  /\b(?:cap_add|add)\s*:\s*(?:\[[^\]\n]*\b(?:SYS_ADMIN|ALL)\b[^\]\n]*\]|(?:\r?\n\s*-\s*["']?[A-Z_]+["']?\s*)*\r?\n\s*-\s*["']?(?:SYS_ADMIN|ALL)["']?\b)/, "Удалите SYS_ADMIN и ALL; сбросьте capabilities и добавьте только необходимые для конкретной операции.", { category: "configuration", scope: "file", owasp: "A05:2021" });
+addRule("CFG011", ["config"], "Отключён seccomp контейнера", "Контейнер явно запускается без фильтра системных вызовов seccomp.", "high", "CWE-693",
+  /\bseccomp\s*[:=]\s*unconfined\b|\bseccompProfile\s*:\s*(?:\{\s*type\s*:\s*["']?Unconfined["']?\s*\}|\s*\n\s*type\s*:\s*["']?Unconfined["']?\b)/i, "Используйте seccompProfile.type: RuntimeDefault или ограниченный профиль Localhost; удалите seccomp=unconfined.", { category: "configuration", scope: "file", owasp: "A05:2021" });
+
 const languageByExtension: Record<string, string> = {
   js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript",
@@ -475,6 +553,8 @@ const languageByExtension: Record<string, string> = {
   kt: "kotlin", kts: "kotlin", rs: "rust", swift: "swift", scala: "scala",
   sh: "shell", bash: "shell", zsh: "shell",
   json: "config", yaml: "config", yml: "config", xml: "config", env: "config",
+  vue: "javascript", svelte: "javascript", conf: "config", ini: "config", toml: "config",
+  tf: "config", hcl: "config", plist: "config",
 };
 
 export const languageLabels: Record<string, string> = {
@@ -513,7 +593,11 @@ export function detectLanguage(filename: string, code: string): string {
   return "unknown";
 }
 
+rules.push(...createExtendedRules(ALL));
+rules.push(...createExpansionRules(ALL));
+
 export const ruleCount = rules.length;
+export const staticRuleIds: readonly string[] = rules.map((rule) => rule.id);
 
 function calculateScore(findings: Finding[]): number {
   const weights: Record<Severity, number> = { critical: 28, high: 16, medium: 8, low: 3, info: 1 };

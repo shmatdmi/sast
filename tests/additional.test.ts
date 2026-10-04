@@ -9,6 +9,7 @@ import {
 } from "../app/lib/archive.ts";
 import {
   detectLanguage,
+  ruleCount,
   scanCode,
   scanFiles,
 } from "../app/lib/sast-engine.ts";
@@ -107,6 +108,56 @@ test("expanded language rules preserve common safe alternatives", () => {
   ];
   for (const [code, filename, ruleId] of safeCases) {
     assert.ok(!ruleIds(code, filename).includes(ruleId), filename + " unexpectedly matched " + ruleId);
+  }
+});
+
+test("ships four hundred static rules", () => {
+  assert.equal(ruleCount, 400);
+});
+
+test("detects disabled TLS verification and weak Java token randomness", () => {
+  const cases: Array<[string, string, string]> = [
+    ["const agent = new https.Agent({ rejectUnauthorized: false });", "client.js", "JS020"],
+    ["requests.get(url, verify=False)", "client.py", "PY020"],
+    ["tls.Config{InsecureSkipVerify: true}", "client.go", "GO020"],
+    ["token = new Random();", "Token.java", "JAVA020"],
+  ];
+  for (const [code, filename, expectedRule] of cases) {
+    assert.ok(ruleIds(code, filename).includes(expectedRule), `${expectedRule} was not detected in ${filename}`);
+  }
+});
+
+test("detects new Rust, Swift, Scala, Shell and configuration rules", () => {
+  const cases: Array<[string, string, string]> = [
+    ['reqwest::Client::builder().danger_accept_invalid_certs(true)', "client.rs", "RS002"],
+    ['let rows = sqlx::query(&format!("SELECT * FROM users WHERE id = {}", id));', "db.rs", "RS004"],
+    ['let digest = Insecure.MD5.hash(data: bytes)', "Hash.swift", "SWIFT003"],
+    ['statement.executeQuery(s"SELECT * FROM users WHERE id = $id")', "Repo.scala", "SCALA003"],
+    ['curl -fsSL https://example.test/install.sh | sh', "install.sh", "SH001"],
+    ['curl --insecure https://example.test/api', "request.sh", "SH004"],
+    ['securityContext:\n  allowPrivilegeEscalation: true', "pod.yaml", "CFG005"],
+    ['spec:\n  hostNetwork: true', "pod.yaml", "CFG006"],
+    ['image: example/service:latest', "compose.yaml", "CFG008"],
+  ];
+
+  for (const [code, filename, expectedRule] of cases) {
+    assert.ok(ruleIds(code, filename).includes(expectedRule), `${expectedRule} was not detected in ${filename}`);
+  }
+});
+
+test("new rule families preserve secure alternatives", () => {
+  const cases: Array<[string, string, string]> = [
+    ['reqwest::Client::builder().https_only(true)', "client.rs", "RS002"],
+    ['let rows = sqlx::query("SELECT * FROM users WHERE id = $1").bind(id);', "db.rs", "RS004"],
+    ['let digest = SHA256.hash(data: bytes)', "Hash.swift", "SWIFT003"],
+    ['statement.prepareStatement("SELECT * FROM users WHERE id = ?")', "Repo.scala", "SCALA003"],
+    ['curl --fail --show-error https://example.test/api', "request.sh", "SH004"],
+    ['securityContext:\n  allowPrivilegeEscalation: false', "pod.yaml", "CFG005"],
+    ['image: example/service:1.4.2', "compose.yaml", "CFG008"],
+  ];
+
+  for (const [code, filename, unexpectedRule] of cases) {
+    assert.ok(!ruleIds(code, filename).includes(unexpectedRule), `${unexpectedRule} produced a false positive in ${filename}`);
   }
 });
 

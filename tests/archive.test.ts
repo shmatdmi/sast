@@ -32,11 +32,12 @@ test("skips test sources and CodeSentry rule/demo fixtures during project scans"
     "tests/index.test.ts": strToU8("eval(userInput)"),
     "src/worker.spec.js": strToU8("eval(userInput)"),
     "app/lib/sast-engine.ts": strToU8("pattern: /eval\\s*\\(/"),
+    "app/lib/sast-rules.ts": strToU8("pattern: /LIBXML_NOENT/"),
     "app/lib/demo-code.ts": strToU8("export const demo = `eval(userInput)`"),
   });
   const result = extractZip(archive);
   assert.deepEqual(result.files.map((file) => file.name), ["src/index.ts"]);
-  assert.equal(result.skippedFiles, 4);
+  assert.equal(result.skippedFiles, 5);
 });
 
 test("rejects traversal paths in ZIP archives", () => {

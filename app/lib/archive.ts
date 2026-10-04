@@ -3,6 +3,7 @@ import { unzipSync } from "fflate";
 export const acceptedSourceExtensions = [
   "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "py", "java", "php", "go", "cs", "rb",
   "kt", "kts", "rs", "swift", "scala", "sh", "bash", "zsh", "json", "yaml", "yml", "xml", "env", "txt",
+  "vue", "svelte", "conf", "ini", "toml", "tf", "hcl", "plist",
 ];
 const acceptedSourceNames = ["dockerfile"];
 const ignoredDirectories = new Set([
@@ -11,7 +12,7 @@ const ignoredDirectories = new Set([
 ]);
 const generatedReportPattern = /-sast-report\.json$/i;
 const testFilePattern = /(?:^|\.)(?:test|spec)\.[cm]?[jt]sx?$/i;
-const internalScannerPattern = /(?:^|\/)app\/lib\/(?:sast-engine|demo-code)\.[cm]?[jt]sx?$/i;
+const internalScannerPattern = /(?:^|\/)app\/lib\/(?:sast-engine|sast-rules(?:-expansion)?|demo-code)\.[cm]?[jt]sx?$/i;
 
 export const MAX_SOURCE_FILE_BYTES = 1024 * 1024;
 export const MAX_ARCHIVE_BYTES = 10 * 1024 * 1024;
