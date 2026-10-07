@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const displayName = typeof body.displayName === "string" ? body.displayName.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
   const role = body.role === "admin" ? "admin" : "user";
-  if (!validUsername(username) || !displayName || displayName.length > 120 || !validPassword(password)) return Response.json({ error: "Проверьте логин, имя и пароль (минимум 10 символов)" }, { status: 400 });
+  if (!validUsername(username) || !displayName || displayName.length > 120 || !validPassword(password)) return Response.json({ error: "Проверьте логин, имя и пароль (минимум 7 символов)" }, { status: 400 });
   try {
     const [created] = await getDb().insert(users).values({ username, displayName, passwordHash: await hashPassword(password), role, mustChangePassword: true }).returning({ id: users.id });
     await getDb().insert(userAuditLog).values({ actorUserId: auth.user.id, targetUserId: created.id, action: "user.created", details: { username, role } });

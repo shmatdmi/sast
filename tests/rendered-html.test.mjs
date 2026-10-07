@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+const workerPromise = import("../dist/server/index.js");
+
 async function render(request = new Request("https://codesentry.example/", { headers: { accept: "text/html" } })) {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
+  const { default: worker } = await workerPromise;
   return worker.fetch(
     request,
     { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
@@ -36,6 +36,23 @@ test("JSON scan API requires authentication before processing sources", async ()
   assert.equal(response.status, 401);
   assert.deepEqual(await response.json(), { error: "Требуется авторизация" });
 });
+
+for (const [path, methods] of [
+  ["/api/users", ["GET", "POST", "PATCH", "DELETE"]],
+  ["/api/scans", ["GET", "POST"]],
+  ["/api/sonar-scans", ["POST"]],
+  ["/api/auth/password", ["PUT"]],
+]) {
+  for (const method of methods) {
+    test(`${method} ${path} rejects unauthenticated requests before touching the database`, async () => {
+      const response = await render(new Request(`https://codesentry.example${path}`, {
+        method, ...(method === "POST" || method === "PATCH" || method === "PUT" ? { body: "invalid JSON" } : {}),
+      }));
+      assert.equal(response.status, 401);
+      assert.equal(typeof (await response.json()).error, "string");
+    });
+  }
+}
 
 test("ZIP uploads up to 10 MiB reach API authentication", async () => {
   for (const size of [3250586, 10 * 1024 * 1024]) {

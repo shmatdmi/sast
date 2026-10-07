@@ -6,6 +6,7 @@ node_modules
 coverage
 outputs
 work
+tmp
 *.log
 *.tar.gz
 .env*

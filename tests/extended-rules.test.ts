@@ -107,9 +107,9 @@ const cases: Array<[string, string, string, string]> = [
   ["CFG043", "Dockerfile", "ADD https://example.test/app.tar.gz /app/", "ADD --checksum=sha256:abc123 https://example.test/app.tar.gz /app/"],
 ];
 
-test("extended catalog contains 86 distinct, documented rules and 400 total IDs", () => {
+test("extended catalog contains 86 distinct, documented rules and 20000 total IDs", () => {
   const pack = createExtendedRules(["unknown"]);
-  assert.equal(ruleCount, 400);
+  assert.equal(ruleCount, 150036);
   assert.equal(new Set(staticRuleIds).size, ruleCount);
   assert.equal(pack.length, 86);
   assert.deepEqual(cases.map(([id]) => id).sort(), pack.map((rule) => rule.id).sort());

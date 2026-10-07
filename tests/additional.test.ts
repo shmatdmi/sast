@@ -111,8 +111,8 @@ test("expanded language rules preserve common safe alternatives", () => {
   }
 });
 
-test("ships four hundred static rules", () => {
-  assert.equal(ruleCount, 400);
+test("ships twenty thousand static rules", () => {
+  assert.equal(ruleCount, 150036);
 });
 
 test("detects disabled TLS verification and weak Java token randomness", () => {

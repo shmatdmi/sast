@@ -1,6 +1,78 @@
 ﻿import { index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-import { boolean } from "drizzle-orm/pg-core";
+import { boolean, check, foreignKey, pgSchema, primaryKey, unique } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+
+export const sastRulesSchema = pgSchema("sast_rules");
+
+export type StoredRuleDefinition = {
+  id: string;
+  languages: string[];
+  title: string;
+  description: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
+  cwe: string;
+  owasp: string;
+  confidence: "high" | "medium";
+  pattern: string;
+  patternFlags: string;
+  exclude: string | null;
+  excludeFlags: string | null;
+  scope: "line" | "file";
+  category: string | null;
+  recommendation: string;
+  references: string[];
+};
+
+export const securityRules = sastRulesSchema.table("rules", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  languages: jsonb("languages").$type<string[]>().notNull(),
+  category: text("category"),
+  cwe: text("cwe").notNull(),
+  owasp: text("owasp").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("rules_languages_check", sql`jsonb_typeof(${table.languages}) = 'array' AND jsonb_array_length(${table.languages}) > 0`),
+  index("rules_cwe_idx").on(table.cwe),
+]);
+
+export const securityRuleVersions = sastRulesSchema.table("rule_versions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ruleId: text("rule_id").notNull().references(() => securityRules.id),
+  contentHash: text("content_hash").notNull(),
+  definition: jsonb("definition").$type<StoredRuleDefinition>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  unique("rule_versions_rule_hash_unique").on(table.ruleId, table.contentHash),
+  unique("rule_versions_id_rule_unique").on(table.id, table.ruleId),
+  check("rule_versions_hash_check", sql`${table.contentHash} ~ '^[0-9a-f]{64}$'`),
+  check("rule_versions_definition_check", sql`jsonb_typeof(${table.definition}) = 'object' AND ${table.definition} ?& ARRAY['id', 'languages', 'title', 'description', 'severity', 'cwe', 'owasp', 'confidence', 'pattern', 'patternFlags', 'exclude', 'excludeFlags', 'scope', 'category', 'recommendation', 'references'] AND ${table.definition}->>'id' = ${table.ruleId} AND ${table.definition}->>'severity' IN ('critical', 'high', 'medium', 'low', 'info') AND ${table.definition}->>'confidence' IN ('high', 'medium') AND ${table.definition}->>'scope' IN ('line', 'file')`),
+]);
+
+export const securityRulesets = sastRulesSchema.table("rulesets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  source: text("source").notNull().default("builtin"),
+  contentHash: text("content_hash").notNull().unique(),
+  ruleCount: integer("rule_count").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  check("rulesets_hash_check", sql`${table.contentHash} ~ '^[0-9a-f]{64}$'`),
+  check("rulesets_count_check", sql`${table.ruleCount} > 0`),
+]);
+
+export const securityRulesetItems = sastRulesSchema.table("ruleset_items", {
+  rulesetId: uuid("ruleset_id").notNull().references(() => securityRulesets.id),
+  ruleId: text("rule_id").notNull(),
+  ruleVersionId: uuid("rule_version_id").notNull(),
+  position: integer("position").notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.rulesetId, table.ruleId] }),
+  unique("ruleset_items_position_unique").on(table.rulesetId, table.position),
+  foreignKey({ columns: [table.ruleVersionId, table.ruleId], foreignColumns: [securityRuleVersions.id, securityRuleVersions.ruleId], name: "ruleset_items_rule_version_fk" }),
+  check("ruleset_items_position_check", sql`${table.position} >= 0`),
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),

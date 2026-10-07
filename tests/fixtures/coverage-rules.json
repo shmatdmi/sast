@@ -1,0 +1,268 @@
+[
+  {
+    "id": "C001",
+    "language": "c",
+    "name": "main.c",
+    "unsafe": "gets(buffer);",
+    "safe": "fgets(buffer, sizeof buffer, stdin);"
+  },
+  {
+    "id": "C002",
+    "language": "c",
+    "name": "main.c",
+    "unsafe": "strcpy(buffer, input);",
+    "safe": "snprintf(buffer, sizeof buffer, \"%s\", input);"
+  },
+  {
+    "id": "C003",
+    "language": "c",
+    "name": "main.c",
+    "unsafe": "printf(userInput);",
+    "safe": "printf(\"%s\", userInput);"
+  },
+  {
+    "id": "C004",
+    "language": "c",
+    "name": "main.c",
+    "unsafe": "system(command);",
+    "safe": "execve(allowedExecutable, checkedArguments, environment);"
+  },
+  {
+    "id": "C005",
+    "language": "c",
+    "name": "main.c",
+    "unsafe": "MD5(input, length, digest);",
+    "safe": "SHA256(input, length, digest);"
+  },
+  {
+    "id": "CPP001",
+    "language": "cpp",
+    "name": "main.cpp",
+    "unsafe": "std::strcpy(buffer, input);",
+    "safe": "std::string buffer(input);"
+  },
+  {
+    "id": "CPP002",
+    "language": "cpp",
+    "name": "main.cpp",
+    "unsafe": "std::printf(userInput);",
+    "safe": "std::printf(\"%s\", userInput);"
+  },
+  {
+    "id": "CPP003",
+    "language": "cpp",
+    "name": "main.cpp",
+    "unsafe": "std::system(command.c_str());",
+    "safe": "posix_spawn(&pid, allowedExecutable, nullptr, nullptr, checkedArguments, environment);"
+  },
+  {
+    "id": "CPP004",
+    "language": "cpp",
+    "name": "main.cpp",
+    "unsafe": "tmpnam(path);",
+    "safe": "mkstemp(path);"
+  },
+  {
+    "id": "CPP005",
+    "language": "cpp",
+    "name": "main.cpp",
+    "unsafe": "EVP_md5();",
+    "safe": "EVP_sha256();"
+  },
+  {
+    "id": "DART001",
+    "language": "dart",
+    "name": "main.dart",
+    "unsafe": "client.badCertificateCallback = (cert, host, port) => true;",
+    "safe": "client.badCertificateCallback = null;"
+  },
+  {
+    "id": "DART002",
+    "language": "dart",
+    "name": "main.dart",
+    "unsafe": "await Process.run(executable, args, runInShell: true);",
+    "safe": "await Process.run(allowedExecutable, checkedArgs, runInShell: false);"
+  },
+  {
+    "id": "DART003",
+    "language": "dart",
+    "name": "main.dart",
+    "unsafe": "db.rawQuery('SELECT * FROM users WHERE name = $name');",
+    "safe": "db.rawQuery('SELECT * FROM users WHERE name = ?', [name]);"
+  },
+  {
+    "id": "DART004",
+    "language": "dart",
+    "name": "main.dart",
+    "unsafe": "md5.convert(bytes);",
+    "safe": "sha256.convert(bytes);"
+  },
+  {
+    "id": "DART005",
+    "language": "dart",
+    "name": "main.dart",
+    "unsafe": "final token = Random().nextInt(100000);",
+    "safe": "final token = Random.secure().nextInt(100000);"
+  },
+  {
+    "id": "ELIXIR001",
+    "language": "elixir",
+    "name": "main.ex",
+    "unsafe": "Code.eval_string(params[\"code\"])",
+    "safe": "Jason.decode(params[\"data\"])",
+    "snippet": "defmodule Example do\nend"
+  },
+  {
+    "id": "ELIXIR002",
+    "language": "elixir",
+    "name": "main.ex",
+    "unsafe": "System.shell(command)",
+    "safe": "System.cmd(\"/usr/bin/printf\", [\"%s\", checked_value])"
+  },
+  {
+    "id": "ELIXIR003",
+    "language": "elixir",
+    "name": "main.ex",
+    "unsafe": "Ecto.Adapters.SQL.query!(Repo, \"SELECT * FROM users WHERE name = '#{name}'\", [])",
+    "safe": "Ecto.Adapters.SQL.query!(Repo, \"SELECT * FROM users WHERE name = $1\", [name])"
+  },
+  {
+    "id": "ELIXIR004",
+    "language": "elixir",
+    "name": "main.ex",
+    "unsafe": ":erlang.binary_to_term(input, [:safe])",
+    "safe": "Plug.Crypto.non_executable_binary_to_term(input, [:safe])"
+  },
+  {
+    "id": "ELIXIR005",
+    "language": "elixir",
+    "name": "main.ex",
+    "unsafe": "String.to_atom(params[\"role\"])",
+    "safe": "Map.fetch(allowed_roles, params[\"role\"])"
+  },
+  {
+    "id": "LUA001",
+    "language": "lua",
+    "name": "main.lua",
+    "unsafe": "os.execute(command)",
+    "safe": "os.execute(\"/usr/bin/true\")"
+  },
+  {
+    "id": "LUA002",
+    "language": "lua",
+    "name": "main.lua",
+    "unsafe": "io.popen(\"cat \" .. filename)",
+    "safe": "io.open(allowed_path, \"r\")"
+  },
+  {
+    "id": "LUA003",
+    "language": "lua",
+    "name": "main.lua",
+    "unsafe": "load(user_code)()",
+    "safe": "cjson.decode(user_data)"
+  },
+  {
+    "id": "LUA004",
+    "language": "lua",
+    "name": "main.lua",
+    "unsafe": "connection:execute(\"SELECT * FROM users WHERE id=\" .. user_id)",
+    "safe": "statement:execute(user_id)"
+  },
+  {
+    "id": "LUA005",
+    "language": "lua",
+    "name": "main.lua",
+    "unsafe": "ngx.say(ngx.var.arg_name)",
+    "safe": "ngx.say(escape_html(ngx.var.arg_name))"
+  },
+  {
+    "id": "PS001",
+    "language": "powershell",
+    "name": "main.ps1",
+    "unsafe": "Invoke-Expression -Command $userInput",
+    "safe": "& $allowedExecutable @checkedArguments"
+  },
+  {
+    "id": "PS002",
+    "language": "powershell",
+    "name": "main.ps1",
+    "unsafe": "Invoke-WebRequest -Uri $url -SkipCertificateCheck",
+    "safe": "Invoke-WebRequest -Uri $url -SkipCertificateCheck:$false"
+  },
+  {
+    "id": "PS003",
+    "language": "powershell",
+    "name": "main.ps1",
+    "unsafe": "ConvertTo-SecureString -String 'top-secret-pass' -AsPlainText -Force",
+    "safe": "Read-Host -AsSecureString"
+  },
+  {
+    "id": "PS004",
+    "language": "powershell",
+    "name": "main.ps1",
+    "unsafe": "[Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }",
+    "safe": "[Net.ServicePointManager]::ServerCertificateValidationCallback = $null"
+  },
+  {
+    "id": "PS005",
+    "language": "powershell",
+    "name": "main.ps1",
+    "unsafe": "$command.CommandText = \"SELECT * FROM users WHERE name = '$name'\"",
+    "safe": "$command.CommandText = 'SELECT * FROM users WHERE name = @name'"
+  },
+  {
+    "id": "NEWSEC001",
+    "safe": "password = 'changeme-example'",
+    "unsafeParts": [
+      "password = '",
+      "real-product",
+      "ion-secret'"
+    ]
+  },
+  {
+    "id": "NEWSEC002",
+    "safe": "-----BEGIN PUBLIC KEY-----",
+    "unsafeParts": [
+      "-----BEGIN P",
+      "RIVATE KEY--",
+      "---"
+    ]
+  },
+  {
+    "id": "NEWSEC003",
+    "safe": "AWS_ROLE=application",
+    "unsafeParts": [
+      "AKIA12345678",
+      "90ABCDEF"
+    ]
+  },
+  {
+    "id": "NEWSEC004",
+    "safe": "GITHUB_TOKEN=environment_value",
+    "unsafeParts": [
+      "ghp_12345678",
+      "90abcdefghij",
+      "klmnopqrstuv",
+      "wxyz"
+    ]
+  },
+  {
+    "id": "NEWSEC005",
+    "safe": "GITLAB_TOKEN=environment_value",
+    "unsafeParts": [
+      "glpat-123456",
+      "7890abcdefgh",
+      "ij"
+    ]
+  },
+  {
+    "id": "NEWSEC006",
+    "safe": "postgres://db.internal/app",
+    "unsafeParts": [
+      "postgres://a",
+      "dmin:real_pa",
+      "ssword@db.in",
+      "ternal/app"
+    ]
+  }
+]

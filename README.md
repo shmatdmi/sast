@@ -1,5 +1,12 @@
 # CodeSentry Local SAST
 
+Команды модульных и интеграционных тестов и границы отчёта покрытия:
+[тестирование](docs/testing.md).
+
+Две крупные SQL-миграции хранятся через Git LFS. Перед клонированием
+установите Git LFS (`git lfs install`); для уже клонированного репозитория
+выполните `git lfs pull` перед сборкой и запуском миграций.
+
 Локальный анализатор исходного кода. При работе через интерфейс исходники
 анализируются в браузере; результаты сохраняются на сервере в истории.
 При вызове API исходники передаются на сервер приложения для анализа.
@@ -25,9 +32,9 @@ npm run dev
   с отображением в результатах SAST и истории и сохранением в `scan_runs.scanned_lines`
   после завершения сканирования; пустой файл содержит 0 строк, завершающий перенос
   не добавляет строку, пропущенные файлы ZIP не учитываются;
-- автоопределение JavaScript, TypeScript, Python, Java, PHP, Go, C#, Ruby,
-  Kotlin, Rust, Swift, Scala, Shell и конфигурационных файлов;
-- 400 статических правил для поиска секретов, SQL/NoSQL/command/template/LDAP-инъекций,
+- 20 групп языков и форматов: JavaScript, TypeScript, Python, Java, PHP, Go, C#, Ruby,
+  Kotlin, Rust, Swift, Scala, Shell, C, C++, Dart, Elixir, Lua, PowerShell и конфигурационные файлы;
+- 150036 статических правил для поиска секретов, SQL/NoSQL/command/template/LDAP-инъекций,
   XSS, SSRF, XXE, path traversal, prototype pollution, небезопасной
   десериализации, слабой криптографии, TLS/JWT/cookie-ошибок и опасных
   container/runtime-настроек;
@@ -38,8 +45,13 @@ npm run dev
   Azure Storage, JWT, приватных ключей и URI баз данных;
 - проверки CSRF в Django/Spring/Rails/ASP.NET, Electron и Android WebView,
   SSH host keys, IAM/S3 policies и GitHub Actions;
-  [каталог набора из 86 правил](docs/security-rules.md) и [каталог ещё 200 правил](docs/security-rules-expansion.md);
+  [каталог набора из 86 правил](docs/security-rules.md), [каталог ещё 200 правил](docs/security-rules-expansion.md),
+  [каталог следующих 300 правил](docs/security-rules-additional.md)
+  и [каталог ещё 300 правил](docs/security-rules-advanced.md);
 - загрузка Vue/Svelte и конфигураций `.conf`, `.ini`, `.toml`, `.tf`, `.hcl`, `.plist`;
+- загрузка исходников и заголовков C/C++, `.dart`, `.ex`/`.exs`, `.lua`,
+  `.ps1`/`.psm1`/`.psd1`; [36 проверок новых языков](docs/security-rules-coverage.md)
+  включают секреты, опасные операции с памятью, shell, SQL, TLS и динамическим кодом;
 - дополнительные проверки JWT claims/signatures, password hashing, Java XML/JNDI/XSLT,
   Rails/Play/Actix, gRPC, Phar/Psych/Oj и конфигураций Nginx/HAProxy/Redis/MongoDB/Elasticsearch;
 - многострочные правила и лёгкий межстрочный source-to-sink анализ потоков
@@ -142,6 +154,17 @@ curl -b cookies.txt \
 
 ## Docker Compose + PostgreSQL
 
+Каталог текущих 150000 SAST-правил также хранится в отдельной схеме `sast_rules`.
+Из них 149000 — сочетания 400 записей опасных API со способами доступа к HTTP-вводу
+и формами составных строк.
+Дополнительные 15000 определений описаны в [каталоге фреймворков](docs/security-rules-framework.md).
+Исходный HTTP-набор из 4000 определений покрывает 400 опасных API × 10 источников HTTP-ввода
+в JavaScript/TypeScript, Python, PHP и Ruby; ограничения описаны в [каталоге HTTP](docs/security-rules-http.md).
+Её создаёт и наполняет миграция; повторный импорт: `npm run rules:seed`.
+Структура, версионирование и SQL-запросы: [каталог правил в БД](docs/sast-rule-database.md).
+Подключение сканера к этому каталогу пока не выполнено — анализ использует
+встроенный набор правил.
+
 Build a new image with a unique application version:
 
 ```bash
@@ -170,3 +193,7 @@ and `INITIAL_ADMIN_PASSWORD`. Further accounts are managed in the
 deployment.
 
 To expose the application on another host port, set `APP_PORT` in `.env`. Do not delete the database volume unless the stored scan metadata is no longer needed.
+
+Ещё 50000 определений для составных строк описаны в [каталоге](docs/security-rules-composed.md).
+
+Набор до 150000 расширен ещё на 80000 форм выражений: [каталог](docs/security-rules-expressions.md).

@@ -1,5 +1,14 @@
 import { createExtendedRules } from "./sast-rules.ts";
 import { createExpansionRules } from "./sast-rules-expansion.ts";
+import { createAdditionalRules } from "./sast-rules-additional.ts";
+import { createAdvancedRules } from "./sast-rules-advanced.ts";
+import { createHttpRules, getHttpRuleApi } from "./sast-rules-http.ts";
+import { createFrameworkRules, getFrameworkRuleApi } from "./sast-rules-framework.ts";
+import { createComposedRules, getComposedRuleApi } from "./sast-rules-composed.ts";
+import { createExpressionRules, getExpressionRuleApi } from "./sast-rules-expressions.ts";
+import { createCoverageRules } from "./sast-rules-coverage.ts";
+import { languageByExtension } from "./sast-languages.ts";
+export { languageLabels, supportedLanguageCount } from "./sast-languages.ts";
 
 export type Severity = "critical" | "high" | "medium" | "low" | "info";
 
@@ -546,41 +555,19 @@ addRule("CFG010", ["config"], "Опасные capabilities контейнера"
 addRule("CFG011", ["config"], "Отключён seccomp контейнера", "Контейнер явно запускается без фильтра системных вызовов seccomp.", "high", "CWE-693",
   /\bseccomp\s*[:=]\s*unconfined\b|\bseccompProfile\s*:\s*(?:\{\s*type\s*:\s*["']?Unconfined["']?\s*\}|\s*\n\s*type\s*:\s*["']?Unconfined["']?\b)/i, "Используйте seccompProfile.type: RuntimeDefault или ограниченный профиль Localhost; удалите seccomp=unconfined.", { category: "configuration", scope: "file", owasp: "A05:2021" });
 
-const languageByExtension: Record<string, string> = {
-  js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
-  ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript",
-  py: "python", java: "java", php: "php", go: "go", cs: "csharp", rb: "ruby",
-  kt: "kotlin", kts: "kotlin", rs: "rust", swift: "swift", scala: "scala",
-  sh: "shell", bash: "shell", zsh: "shell",
-  json: "config", yaml: "config", yml: "config", xml: "config", env: "config",
-  vue: "javascript", svelte: "javascript", conf: "config", ini: "config", toml: "config",
-  tf: "config", hcl: "config", plist: "config",
-};
-
-export const languageLabels: Record<string, string> = {
-  auto: "Автоопределение",
-  javascript: "JavaScript",
-  typescript: "TypeScript",
-  python: "Python",
-  java: "Java",
-  php: "PHP",
-  go: "Go",
-  csharp: "C#",
-  ruby: "Ruby",
-  kotlin: "Kotlin",
-  rust: "Rust",
-  swift: "Swift",
-  scala: "Scala",
-  shell: "Shell",
-  config: "Конфигурация",
-  unknown: "Универсальный",
-  multiple: "Несколько языков",
-};
-
 export function detectLanguage(filename: string, code: string): string {
   if (/^(?:dockerfile|compose\.ya?ml)$/i.test(filename.split(/[\\/]/).pop() ?? "")) return "config";
   const extension = filename.toLowerCase().split(".").pop() ?? "";
+  const cppContent = /\bstd::|\b(?:namespace\s+\w+|template\s*<|using\s+namespace\s+std)\b|#\s*include\s*<iostream>/;
+  // .h is shared by C and C++; an uppercase .C conventionally denotes C++.
+  if (filename.endsWith(".C") || (extension === "h" && cppContent.test(code))) return "cpp";
   if (languageByExtension[extension]) return languageByExtension[extension];
+  if (cppContent.test(code)) return "cpp";
+  if (/^\s*#\s*include\s*[<"]|\bint\s+main\s*\(/m.test(code)) return "c";
+  if (/\bimport\s+['"](?:dart:|package:flutter\/)|\bvoid\s+main\s*\(\s*\)\s*(?:async\s*)?\{/m.test(code)) return "dart";
+  if (/^\s*defmodule\s+\w|\b(?:Code\.eval_(?:string|quoted)|Ecto\.Adapters\.SQL\.)/m.test(code)) return "elixir";
+  if (/^\s*local\s+\w+\s*=|\b(?:os\.execute|io\.popen|ngx\.req\.)/m.test(code)) return "lua";
+  if (/^\s*(?:param\s*\(|function\s+[A-Za-z][\w-]*\s*\{)|\b(?:Invoke-Expression|Invoke-WebRequest|ConvertTo-SecureString|Write-Host)\b/im.test(code)) return "powershell";
   if (/^\s*<\?php/m.test(code)) return "php";
   if (/^\s*(?:from\s+\w+\s+import|import\s+\w+|def\s+\w+\s*\()/m.test(code)) return "python";
   if (/\bpackage\s+main\b|\bfunc\s+main\s*\(/m.test(code)) return "go";
@@ -595,9 +582,40 @@ export function detectLanguage(filename: string, code: string): string {
 
 rules.push(...createExtendedRules(ALL));
 rules.push(...createExpansionRules(ALL));
+rules.push(...createAdditionalRules());
+rules.push(...createAdvancedRules());
+rules.push(...createHttpRules());
+rules.push(...createFrameworkRules());
+rules.push(...createComposedRules());
+rules.push(...createExpressionRules());
+rules.push(...createCoverageRules());
 
 export const ruleCount = rules.length;
 export const staticRuleIds: readonly string[] = rules.map((rule) => rule.id);
+
+// Index the immutable catalog once. Absent APIs skip entire HTTP/framework groups.
+const ruleOrder = new Map(rules.map((rule, index) => [rule.id, index]));
+const ruleGroupsByLanguage = new Map<string, Map<string, Rule[]>>();
+for (const rule of rules) {
+  const api = getHttpRuleApi(rule.id) ?? getFrameworkRuleApi(rule.id) ?? getComposedRuleApi(rule.id) ?? getExpressionRuleApi(rule.id) ?? "";
+  for (const language of rule.languages) {
+    if (!ruleGroupsByLanguage.has(language)) ruleGroupsByLanguage.set(language, new Map());
+    const groups = ruleGroupsByLanguage.get(language)!;
+    if (!groups.has(api)) groups.set(api, []);
+    groups.get(api)!.push(rule);
+  }
+}
+
+/** A detached copy of the built-in catalog for persistence and tooling. */
+export function getStaticRules(): Rule[] {
+  return rules.map((rule) => ({
+    ...rule,
+    languages: [...rule.languages],
+    references: [...rule.references],
+    pattern: new RegExp(rule.pattern.source, rule.pattern.flags),
+    exclude: rule.exclude ? new RegExp(rule.exclude.source, rule.exclude.flags) : undefined,
+  }));
+}
 
 function calculateScore(findings: Finding[]): number {
   const weights: Record<Severity, number> = { critical: 28, high: 16, medium: 8, low: 3, info: 1 };
@@ -649,7 +667,9 @@ export function scanCode(code: string, filename = "code.txt", selectedLanguage =
     });
   };
 
-  const activeRules = rules.filter((rule) => rule.languages.includes(language) || (language === "unknown" && rule.languages.includes("unknown")));
+  const activeRules = [...(ruleGroupsByLanguage.get(language) ?? new Map<string, Rule[]>())]
+    .flatMap(([api, group]) => !api || normalizedCode.includes(api) ? group : [])
+    .sort((left, right) => ruleOrder.get(left.id)! - ruleOrder.get(right.id)!);
   for (const rule of activeRules) {
     if (rule.scope === "file") {
       const flags = rule.pattern.flags.includes("g") ? rule.pattern.flags : rule.pattern.flags + "g";
@@ -663,8 +683,8 @@ export function scanCode(code: string, filename = "code.txt", selectedLanguage =
     }
 
     let offset = 0;
+    const matcher = new RegExp(rule.pattern.source, rule.pattern.flags.replace("g", ""));
     lines.forEach((line) => {
-      const matcher = new RegExp(rule.pattern.source, rule.pattern.flags.replace("g", ""));
       const match = matcher.exec(line);
       if (match && !rule.exclude?.test(line)) pushFinding(rule, offset + (match.index ?? 0), match[0]);
       offset += line.length + 1;

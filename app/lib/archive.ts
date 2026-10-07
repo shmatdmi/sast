@@ -1,10 +1,7 @@
 import { unzipSync } from "fflate";
+import { languageByExtension } from "./sast-languages.ts";
 
-export const acceptedSourceExtensions = [
-  "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "py", "java", "php", "go", "cs", "rb",
-  "kt", "kts", "rs", "swift", "scala", "sh", "bash", "zsh", "json", "yaml", "yml", "xml", "env", "txt",
-  "vue", "svelte", "conf", "ini", "toml", "tf", "hcl", "plist",
-];
+export const acceptedSourceExtensions = [...Object.keys(languageByExtension), "txt"];
 const acceptedSourceNames = ["dockerfile"];
 const ignoredDirectories = new Set([
   ".git", "node_modules", "vendor", "dist", "build", ".next", ".vinext", "tmp",
@@ -12,7 +9,7 @@ const ignoredDirectories = new Set([
 ]);
 const generatedReportPattern = /-sast-report\.json$/i;
 const testFilePattern = /(?:^|\.)(?:test|spec)\.[cm]?[jt]sx?$/i;
-const internalScannerPattern = /(?:^|\/)app\/lib\/(?:sast-engine|sast-rules(?:-expansion)?|demo-code)\.[cm]?[jt]sx?$/i;
+const internalScannerPattern = /(?:^|\/)app\/lib\/(?:sast-engine|sast-languages|sast-rules(?:-expansion|-additional|-advanced|-http|-framework|-composed|-expressions|-coverage)?|demo-code)\.[cm]?[jt]sx?$/i;
 
 export const MAX_SOURCE_FILE_BYTES = 1024 * 1024;
 export const MAX_ARCHIVE_BYTES = 10 * 1024 * 1024;

@@ -9,7 +9,7 @@ import UsersPanel from "./UsersPanel";
 import PasswordDialog from "./PasswordDialog";
 import SonarLite from "./SonarLite";
 import type { AuthUser } from "../lib/auth";
-import { languageLabels, ruleCount, scanCode, scanFiles, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
+import { languageLabels, supportedLanguageCount, ruleCount, scanCode, scanFiles, type Finding, type ScanResult, type Severity } from "../lib/sast-engine";
 import { demoCode } from "../lib/demo-code";
 import { appVersion } from "../lib/version";
 import { scanCodeQuality, type SonarResult } from "../lib/sonar-lite";
@@ -343,7 +343,7 @@ export default function SastWorkspace({ user }: { user: AuthUser }) {
             <div className="overview-grid">
               <article className="stat-panel accent"><div className="panel-label"><span>Статус защиты</span><span className="live-badge">LIVE</span></div><strong>{result ? (result.summary.score >= 85 ? "Стабильно" : result.summary.score >= 60 ? "Внимание" : "Высокий риск") : "Готов к работе"}</strong><div className="spark-bars" aria-hidden="true">{[34,48,40,65,58,76,69,82,78,91,86,96].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div><small>Анализ выполняется полностью на устройстве</small></article>
               <article className="stat-panel"><div className="panel-label"><span>Правила</span><ShieldIcon size={15} /></div><strong>{ruleCount}</strong><div className="stat-delta positive">● актуальная база</div><small>CWE и OWASP-категории</small></article>
-              <article className="stat-panel"><div className="panel-label"><span>Охват</span><CodeIcon size={15} /></div><strong>14</strong><div className="stat-delta">языков и форматов</div><small>Исходники и ZIP-проекты</small></article>
+              <article className="stat-panel"><div className="panel-label"><span>Охват</span><CodeIcon size={15} /></div><strong>{supportedLanguageCount}</strong><div className="stat-delta">языков и форматов</div><small>Исходники и ZIP-проекты</small></article>
               <article className="stat-panel"><div className="panel-label"><span>Последний скан</span><FileIcon size={15} /></div><strong>{result ? `${result.durationMs} мс` : "—"}</strong><div className="stat-delta">{result ? `${result.scannedLines.toLocaleString("ru-RU")} строк · ${languageLabels[result.language] ?? result.language}` : "ожидает запуска"}</div><small>{result ? filename || "code.txt" : "Нет истории отправки данных"}</small></article>
             </div>
           </section>

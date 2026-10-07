@@ -16,7 +16,7 @@ export async function ensureInitialAdmin() {
   if ((await db.select({ id: users.id }).from(users).limit(1)).length) return;
   const username = normalizeUsername(process.env.INITIAL_ADMIN_USERNAME ?? "admin");
   const password = process.env.INITIAL_ADMIN_PASSWORD ?? "";
-  if (!validUsername(username) || !validPassword(password)) throw new Error("INITIAL_ADMIN_PASSWORD must contain at least 10 characters");
+  if (!validUsername(username) || !validPassword(password)) throw new Error("INITIAL_ADMIN_PASSWORD must contain at least 7 characters");
   await db.insert(users).values({ username, displayName: "Администратор", passwordHash: await hashPassword(password), role: "admin" }).onConflictDoNothing();
 }
 export async function createSession(userId: string) { const token = randomBytes(32).toString("base64url"); const expiresAt = new Date(Date.now() + SESSION_AGE_SECONDS * 1000); await getDb().insert(userSessions).values({ userId, tokenHash: tokenHash(token), expiresAt }); return { token, expiresAt }; }

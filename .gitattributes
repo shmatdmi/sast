@@ -7,3 +7,6 @@
 *.ico binary
 *.woff binary
 *.woff2 binary
+
+drizzle/0009_composed_rule_catalog_70000.sql filter=lfs diff=lfs merge=lfs -text
+drizzle/0010_expression_rule_catalog_150000.sql filter=lfs diff=lfs merge=lfs -text

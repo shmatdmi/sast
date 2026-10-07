@@ -1,0 +1,1802 @@
+[
+  {
+    "id": "JS200",
+    "family": "JS",
+    "unsafe": "sanitizer.bypassSecurityTrustResourceUrl(userUrl);",
+    "safe": "sanitizer.sanitize(SecurityContext.RESOURCE_URL, allowedUrl);"
+  },
+  {
+    "id": "JS201",
+    "family": "JS",
+    "unsafe": "sanitizer.bypassSecurityTrustScript(userScript);",
+    "safe": "runAllowedAction(action);"
+  },
+  {
+    "id": "JS202",
+    "family": "JS",
+    "unsafe": "sanitizer.bypassSecurityTrustStyle(userStyle);",
+    "safe": "sanitizer.sanitize(SecurityContext.STYLE, style);"
+  },
+  {
+    "id": "JS203",
+    "family": "JS",
+    "unsafe": "parser.parseFromString(req.body.html, 'text/html');",
+    "safe": "parser.parseFromString(sanitizedHtml, 'text/html');"
+  },
+  {
+    "id": "JS204",
+    "family": "JS",
+    "unsafe": "element.append(req.body.html);",
+    "safe": "element.append(document.createTextNode(text));"
+  },
+  {
+    "id": "JS205",
+    "family": "JS",
+    "unsafe": "element.prepend(req.query.html);",
+    "safe": "element.prepend(document.createTextNode(text));"
+  },
+  {
+    "id": "JS206",
+    "family": "JS",
+    "unsafe": "element.replaceWith(req.body.html);",
+    "safe": "element.replaceWith(document.createTextNode(text));"
+  },
+  {
+    "id": "JS207",
+    "family": "JS",
+    "unsafe": "pug.compile(req.body.template);",
+    "safe": "pug.compileFile('profile.pug');"
+  },
+  {
+    "id": "JS208",
+    "family": "JS",
+    "unsafe": "nunjucks.renderString(req.body.template);",
+    "safe": "nunjucks.render('profile.njk', model);"
+  },
+  {
+    "id": "JS209",
+    "family": "JS",
+    "unsafe": "Mustache.render(req.body.template, model);",
+    "safe": "Mustache.render(profileTemplate, model);"
+  },
+  {
+    "id": "JS210",
+    "family": "JS",
+    "unsafe": "knex.raw(req.query.sql);",
+    "safe": "knex.raw('select * from users where id = ?', [id]);"
+  },
+  {
+    "id": "JS211",
+    "family": "JS",
+    "unsafe": "Sequelize.literal(req.query.order);",
+    "safe": "Sequelize.col('created_at');"
+  },
+  {
+    "id": "JS212",
+    "family": "JS",
+    "unsafe": "prisma.$queryRawUnsafe(req.body.sql);",
+    "safe": "prisma.user.findUnique({ where: { id } });"
+  },
+  {
+    "id": "JS213",
+    "family": "JS",
+    "unsafe": "prisma.$executeRawUnsafe(req.body.sql);",
+    "safe": "prisma.user.delete({ where: { id } });"
+  },
+  {
+    "id": "JS214",
+    "family": "JS",
+    "unsafe": "pipeline = { $function: { body: req.body.code, args: [], lang: 'js' } };",
+    "safe": "pipeline = { $project: { name: 1 } };"
+  },
+  {
+    "id": "JS215",
+    "family": "JS",
+    "unsafe": "User.findByIdAndUpdate(id, req.body);",
+    "safe": "User.findByIdAndUpdate(id, { displayName: validatedName });"
+  },
+  {
+    "id": "JS216",
+    "family": "JS",
+    "unsafe": "res.download(req.query.path);",
+    "safe": "res.download(allowedPath);"
+  },
+  {
+    "id": "JS217",
+    "family": "JS",
+    "unsafe": "res.end(req.query.html);",
+    "safe": "res.json({ text: req.query.html });"
+  },
+  {
+    "id": "JS218",
+    "family": "JS",
+    "unsafe": "new vm.Script(req.body.code);",
+    "safe": "runAllowedAction(action);"
+  },
+  {
+    "id": "JS219",
+    "family": "JS",
+    "unsafe": "fastify({ disableRequestLogging: true });",
+    "safe": "fastify({ logger: true, disableRequestLogging: false });"
+  },
+  {
+    "id": "JS220",
+    "family": "JS",
+    "unsafe": "require(req.query.module);",
+    "safe": "require('./known-handler.cjs');"
+  },
+  {
+    "id": "JS221",
+    "family": "JS",
+    "unsafe": "import(req.query.module);",
+    "safe": "import('./known-handler.js');"
+  },
+  {
+    "id": "JS222",
+    "family": "JS",
+    "unsafe": "DOMPurify.sanitize(html, { SAFE_FOR_XML: false });",
+    "safe": "DOMPurify.sanitize(html, { SAFE_FOR_XML: true });"
+  },
+  {
+    "id": "JS223",
+    "family": "JS",
+    "unsafe": "helmet({ contentSecurityPolicy: false });",
+    "safe": "helmet({ contentSecurityPolicy: { useDefaults: true } });"
+  },
+  {
+    "id": "JS224",
+    "family": "JS",
+    "unsafe": "cookieSession({ signed: false });",
+    "safe": "cookieSession({ signed: true, keys: signingKeys });"
+  },
+  {
+    "id": "JS225",
+    "family": "JS",
+    "unsafe": "axios.get(url, { maxContentLength: -1 });",
+    "safe": "axios.get(url, { maxContentLength: 1048576 });"
+  },
+  {
+    "id": "JS226",
+    "family": "JS",
+    "unsafe": "express.json({ limit: '1gb' });",
+    "safe": "express.json({ limit: '100kb' });"
+  },
+  {
+    "id": "JS227",
+    "family": "JS",
+    "unsafe": "http.request(url, { insecureHTTPParser: true });",
+    "safe": "http.request(url, { insecureHTTPParser: false });"
+  },
+  {
+    "id": "JS228",
+    "family": "JS",
+    "unsafe": "new WebSocketServer({ maxPayload: 0 });",
+    "safe": "new WebSocketServer({ maxPayload: 65536 });"
+  },
+  {
+    "id": "JS229",
+    "family": "JS",
+    "unsafe": "sessionStorage.setItem('password', password);",
+    "safe": "sessionStorage.setItem('displayName', displayName);"
+  },
+  {
+    "id": "PY200",
+    "family": "PY",
+    "unsafe": "torch.hub.load(request.args['repo'], 'model')",
+    "safe": "load_verified_local_model(model_id)"
+  },
+  {
+    "id": "PY201",
+    "family": "PY",
+    "unsafe": "cloudpickle.loads(payload)",
+    "safe": "json.loads(payload)"
+  },
+  {
+    "id": "PY202",
+    "family": "PY",
+    "unsafe": "joblib.load(upload)",
+    "safe": "json.load(upload)"
+  },
+  {
+    "id": "PY203",
+    "family": "PY",
+    "unsafe": "np.load(path, allow_pickle=True)",
+    "safe": "np.load(path, allow_pickle=False)"
+  },
+  {
+    "id": "PY204",
+    "family": "PY",
+    "unsafe": "pd.read_hdf(request.args['path'])",
+    "safe": "pd.read_hdf(allowedPath)"
+  },
+  {
+    "id": "PY205",
+    "family": "PY",
+    "unsafe": "jinja2.Template(request.form['template'])",
+    "safe": "jinja2.Template('<p>{{ name }}</p>')"
+  },
+  {
+    "id": "PY206",
+    "family": "PY",
+    "unsafe": "mako.template.Template(text=request.form['template'])",
+    "safe": "mako.template.Template(filename='profile.html')"
+  },
+  {
+    "id": "PY207",
+    "family": "PY",
+    "unsafe": "tornado.template.Template(self.get_argument('template'))",
+    "safe": "loader.load('profile.html')"
+  },
+  {
+    "id": "PY208",
+    "family": "PY",
+    "unsafe": "Context(model, autoescape=False)",
+    "safe": "Context(model, autoescape=True)"
+  },
+  {
+    "id": "PY209",
+    "family": "PY",
+    "unsafe": "Response(request.args['html'], mimetype='text/html')",
+    "safe": "jsonify({'text': request.args['html']})"
+  },
+  {
+    "id": "PY210",
+    "family": "PY",
+    "unsafe": "HttpResponse(request.GET['html'])",
+    "safe": "JsonResponse({'text': request.GET['html']})"
+  },
+  {
+    "id": "PY211",
+    "family": "PY",
+    "unsafe": "text(request.args['sql'])",
+    "safe": "text('select * from users where id = :id')"
+  },
+  {
+    "id": "PY212",
+    "family": "PY",
+    "unsafe": "df.query(request.args['expression'])",
+    "safe": "df.loc[df['id'] == validated_id]"
+  },
+  {
+    "id": "PY213",
+    "family": "PY",
+    "unsafe": "sympy.sympify(request.args['expression'])",
+    "safe": "calculate_allowed_operation(operation)"
+  },
+  {
+    "id": "PY214",
+    "family": "PY",
+    "unsafe": "compile(request.form['code'], 'http', 'exec')",
+    "safe": "parse_validated_json(payload)"
+  },
+  {
+    "id": "PY215",
+    "family": "PY",
+    "unsafe": "importlib.import_module(request.args['module'])",
+    "safe": "importlib.import_module('app.handlers')"
+  },
+  {
+    "id": "PY216",
+    "family": "PY",
+    "unsafe": "runpy.run_path(request.args['path'])",
+    "safe": "dispatch_allowed_action(action)"
+  },
+  {
+    "id": "PY217",
+    "family": "PY",
+    "unsafe": "shutil.rmtree(request.args['path'])",
+    "safe": "shutil.rmtree(checked_workspace)"
+  },
+  {
+    "id": "PY218",
+    "family": "PY",
+    "unsafe": "shutil.unpack_archive(request.args['path'])",
+    "safe": "extract_validated_archive(upload)"
+  },
+  {
+    "id": "PY219",
+    "family": "PY",
+    "unsafe": "urllib.request.urlretrieve(request.args['url'])",
+    "safe": "download_allowed_url(validated_url)"
+  },
+  {
+    "id": "PY220",
+    "family": "PY",
+    "unsafe": "ssl._create_default_https_context = ssl._create_unverified_context",
+    "safe": "context = ssl.create_default_context()"
+  },
+  {
+    "id": "PY221",
+    "family": "PY",
+    "unsafe": "websocket.create_connection(url, sslopt={'cert_reqs': ssl.CERT_NONE})",
+    "safe": "websocket.create_connection(url, sslopt={'cert_reqs': ssl.CERT_REQUIRED})"
+  },
+  {
+    "id": "PY222",
+    "family": "PY",
+    "unsafe": "ldap3.Tls(validate=ssl.CERT_NONE)",
+    "safe": "ldap3.Tls(validate=ssl.CERT_REQUIRED)"
+  },
+  {
+    "id": "PY223",
+    "family": "PY",
+    "unsafe": "smtp.set_debuglevel(1)",
+    "safe": "smtp.set_debuglevel(0)"
+  },
+  {
+    "id": "PY224",
+    "family": "PY",
+    "unsafe": "app.config['PROPAGATE_EXCEPTIONS'] = True",
+    "safe": "app.config['PROPAGATE_EXCEPTIONS'] = False"
+  },
+  {
+    "id": "PY225",
+    "family": "PY",
+    "unsafe": "DEBUG_PROPAGATE_EXCEPTIONS = True",
+    "safe": "DEBUG_PROPAGATE_EXCEPTIONS = False"
+  },
+  {
+    "id": "PY226",
+    "family": "PY",
+    "unsafe": "app.conf.task_serializer = 'pickle'",
+    "safe": "app.conf.task_serializer = 'json'"
+  },
+  {
+    "id": "PY227",
+    "family": "PY",
+    "unsafe": "app.conf.result_serializer = 'pickle'",
+    "safe": "app.conf.result_serializer = 'json'"
+  },
+  {
+    "id": "PY228",
+    "family": "PY",
+    "unsafe": "token = random.randbytes(32)",
+    "safe": "token = secrets.token_bytes(32)"
+  },
+  {
+    "id": "PY229",
+    "family": "PY",
+    "unsafe": "os.umask(0)",
+    "safe": "os.umask(0o077)"
+  },
+  {
+    "id": "JAVA200",
+    "family": "JAVA",
+    "unsafe": "mapper.enableDefaultTyping();",
+    "safe": "mapper.readValue(json, Profile.class);"
+  },
+  {
+    "id": "JAVA201",
+    "family": "JAVA",
+    "unsafe": "mapper.activateDefaultTyping(LaissezFaireSubTypeValidator.instance);",
+    "safe": "mapper.readValue(json, Profile.class);"
+  },
+  {
+    "id": "JAVA202",
+    "family": "JAVA",
+    "unsafe": "config.setAutoTypeSupport(true);",
+    "safe": "config.setAutoTypeSupport(false);"
+  },
+  {
+    "id": "JAVA203",
+    "family": "JAVA",
+    "unsafe": "JSON.parseObject(json, Object.class, Feature.SupportAutoType);",
+    "safe": "JSON.parseObject(json, Profile.class);"
+  },
+  {
+    "id": "JAVA204",
+    "family": "JAVA",
+    "unsafe": "new Yaml(new Constructor(Object.class, options));",
+    "safe": "new Yaml(new SafeConstructor(options));"
+  },
+  {
+    "id": "JAVA205",
+    "family": "JAVA",
+    "unsafe": "kryo.setRegistrationRequired(false);",
+    "safe": "kryo.setRegistrationRequired(true);"
+  },
+  {
+    "id": "JAVA206",
+    "family": "JAVA",
+    "unsafe": "new HessianInput(untrustedStream);",
+    "safe": "parseValidatedJson(untrustedStream);"
+  },
+  {
+    "id": "JAVA207",
+    "family": "JAVA",
+    "unsafe": "jdbc.queryForObject(request.getParameter(\"sql\"), String.class);",
+    "safe": "jdbc.queryForObject(\"select name from users where id=?\", String.class, id);"
+  },
+  {
+    "id": "JAVA208",
+    "family": "JAVA",
+    "unsafe": "em.createNativeQuery(request.getParameter(\"sql\"));",
+    "safe": "em.createNativeQuery(\"select * from users where id=?\");"
+  },
+  {
+    "id": "JAVA209",
+    "family": "JAVA",
+    "unsafe": "session.createQuery(request.getParameter(\"hql\"));",
+    "safe": "session.createQuery(\"from User where id = :id\");"
+  },
+  {
+    "id": "JAVA210",
+    "family": "JAVA",
+    "unsafe": "elProcessor.eval(request.getParameter(\"expression\"));",
+    "safe": "dispatchAllowedAction(action);"
+  },
+  {
+    "id": "JAVA211",
+    "family": "JAVA",
+    "unsafe": "jexl.createExpression(request.getParameter(\"expression\"));",
+    "safe": "jexl.createExpression(\"user.name\");"
+  },
+  {
+    "id": "JAVA212",
+    "family": "JAVA",
+    "unsafe": "groovyShell.evaluate(request.getParameter(\"code\"));",
+    "safe": "dispatchAllowedAction(action);"
+  },
+  {
+    "id": "JAVA213",
+    "family": "JAVA",
+    "unsafe": "Ognl.getValue(request.getParameter(\"expr\"), context);",
+    "safe": "context.get(\"name\");"
+  },
+  {
+    "id": "JAVA214",
+    "family": "JAVA",
+    "unsafe": "MVEL.eval(request.getParameter(\"expr\"));",
+    "safe": "dispatchAllowedAction(action);"
+  },
+  {
+    "id": "JAVA215",
+    "family": "JAVA",
+    "unsafe": "xpath.evaluate(request.getParameter(\"xpath\"), document);",
+    "safe": "xpath.evaluate(\"/users/user\", document);"
+  },
+  {
+    "id": "JAVA216",
+    "family": "JAVA",
+    "unsafe": "new URL(request.getParameter(\"url\"));",
+    "safe": "new URL(\"https://api.example/approved\");"
+  },
+  {
+    "id": "JAVA217",
+    "family": "JAVA",
+    "unsafe": "Unirest.get(request.getParameter(\"url\"));",
+    "safe": "Unirest.get(allowedURL);"
+  },
+  {
+    "id": "JAVA218",
+    "family": "JAVA",
+    "unsafe": "Jsoup.connect(request.getParameter(\"url\"));",
+    "safe": "Jsoup.connect(allowedURL);"
+  },
+  {
+    "id": "JAVA219",
+    "family": "JAVA",
+    "unsafe": "response.sendRedirect(request.getParameter(\"next\"));",
+    "safe": "response.sendRedirect(\"/home\");"
+  },
+  {
+    "id": "JAVA220",
+    "family": "JAVA",
+    "unsafe": "response.setHeader(\"X-Name\", request.getParameter(\"name\"));",
+    "safe": "response.setHeader(\"X-Name\", validatedName);"
+  },
+  {
+    "id": "JAVA221",
+    "family": "JAVA",
+    "unsafe": "cors.allowedOriginPatterns(\"*\");",
+    "safe": "cors.allowedOrigins(\"https://app.example\");"
+  },
+  {
+    "id": "JAVA222",
+    "family": "JAVA",
+    "unsafe": "http.headers().disable();",
+    "safe": "http.headers().defaultsDisabled().contentTypeOptions();"
+  },
+  {
+    "id": "JAVA223",
+    "family": "JAVA",
+    "unsafe": "builder.loadTrustMaterial(TrustAllStrategy.INSTANCE);",
+    "safe": "builder.loadTrustMaterial(trustedKeyStore, null);"
+  },
+  {
+    "id": "JAVA224",
+    "family": "JAVA",
+    "unsafe": "client.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);",
+    "safe": "client.setSSLHostnameVerifier(new DefaultHostnameVerifier());"
+  },
+  {
+    "id": "JAVA225",
+    "family": "JAVA",
+    "unsafe": "interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);",
+    "safe": "interceptor.setLevel(HttpLoggingInterceptor.Level.NONE);"
+  },
+  {
+    "id": "JAVA226",
+    "family": "JAVA",
+    "unsafe": "settings.setAllowFileAccessFromFileURLs(true);",
+    "safe": "settings.setAllowFileAccessFromFileURLs(false);"
+  },
+  {
+    "id": "JAVA227",
+    "family": "JAVA",
+    "unsafe": "registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED);",
+    "safe": "registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED);"
+  },
+  {
+    "id": "JAVA228",
+    "family": "JAVA",
+    "unsafe": "sslErrorHandler.proceed();",
+    "safe": "sslErrorHandler.cancel();"
+  },
+  {
+    "id": "JAVA229",
+    "family": "JAVA",
+    "unsafe": "openFileOutput(\"credentials\", Context.MODE_WORLD_READABLE);",
+    "safe": "openFileOutput(\"credentials\", Context.MODE_PRIVATE);"
+  },
+  {
+    "id": "PHP200",
+    "family": "PHP",
+    "unsafe": "DB::unprepared($_POST['sql']);",
+    "safe": "DB::statement('delete from users where id = ?', [$id]);"
+  },
+  {
+    "id": "PHP201",
+    "family": "PHP",
+    "unsafe": "DB::raw($_GET['order']);",
+    "safe": "DB::raw('count(*)');"
+  },
+  {
+    "id": "PHP202",
+    "family": "PHP",
+    "unsafe": "$users->whereRaw($_GET['filter']);",
+    "safe": "$users->where('name', $validatedName);"
+  },
+  {
+    "id": "PHP203",
+    "family": "PHP",
+    "unsafe": "$users->orderByRaw($_GET['order']);",
+    "safe": "$users->orderBy('created_at');"
+  },
+  {
+    "id": "PHP204",
+    "family": "PHP",
+    "unsafe": "new Environment($loader, ['autoescape' => false]);",
+    "safe": "new Environment($loader, ['autoescape' => 'html']);"
+  },
+  {
+    "id": "PHP205",
+    "family": "PHP",
+    "unsafe": "$twig->createTemplate($_POST['template']);",
+    "safe": "$twig->load('profile.html.twig');"
+  },
+  {
+    "id": "PHP206",
+    "family": "PHP",
+    "unsafe": "{!! $_GET['html'] !!}",
+    "safe": "{{ $_GET['html'] }}"
+  },
+  {
+    "id": "PHP207",
+    "family": "PHP",
+    "unsafe": "printf('%s', $_GET['html']);",
+    "safe": "printf('%s', htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));"
+  },
+  {
+    "id": "PHP208",
+    "family": "PHP",
+    "unsafe": "new ReflectionFunction($_GET['function']);",
+    "safe": "$handlers[$validatedOperation];"
+  },
+  {
+    "id": "PHP209",
+    "family": "PHP",
+    "unsafe": "proc_open($_POST['command'], $descriptors, $pipes);",
+    "safe": "proc_open(['/usr/bin/tool', $validatedArg], $descriptors, $pipes);"
+  },
+  {
+    "id": "PHP210",
+    "family": "PHP",
+    "unsafe": "set_include_path($_GET['path']);",
+    "safe": "set_include_path('/srv/app/includes');"
+  },
+  {
+    "id": "PHP211",
+    "family": "PHP",
+    "unsafe": "session_id($_GET['sid']);",
+    "safe": "session_start(['use_strict_mode' => true]);"
+  },
+  {
+    "id": "PHP212",
+    "family": "PHP",
+    "unsafe": "copy($_GET['url'], $target);",
+    "safe": "copy($allowedSource, $target);"
+  },
+  {
+    "id": "PHP213",
+    "family": "PHP",
+    "unsafe": "unlink($_GET['path']);",
+    "safe": "unlink($allowedPath);"
+  },
+  {
+    "id": "PHP214",
+    "family": "PHP",
+    "unsafe": "rmdir($_POST['path']);",
+    "safe": "rmdir($allowedDirectory);"
+  },
+  {
+    "id": "PHP215",
+    "family": "PHP",
+    "unsafe": "fopen($_GET['path'], 'r');",
+    "safe": "fopen($allowedPath, 'r');"
+  },
+  {
+    "id": "PHP216",
+    "family": "PHP",
+    "unsafe": "file_put_contents($_POST['path'], $data);",
+    "safe": "file_put_contents($allowedPath, $data);"
+  },
+  {
+    "id": "PHP217",
+    "family": "PHP",
+    "unsafe": "openssl_public_encrypt($data, $out, $key, OPENSSL_PKCS1_PADDING);",
+    "safe": "openssl_public_encrypt($data, $out, $key, OPENSSL_PKCS1_OAEP_PADDING);"
+  },
+  {
+    "id": "PHP218",
+    "family": "PHP",
+    "unsafe": "assert('execute_dynamic_code()');",
+    "safe": "assert($value === $expected);"
+  },
+  {
+    "id": "PHP219",
+    "family": "PHP",
+    "unsafe": "stream_context_create(['ssl' => ['verify_peer_name' => false]]);",
+    "safe": "stream_context_create(['ssl' => ['verify_peer_name' => true]]);"
+  },
+  {
+    "id": "PHP220",
+    "family": "PHP",
+    "unsafe": "stream_context_create(['ssl' => ['allow_self_signed' => true]]);",
+    "safe": "stream_context_create(['ssl' => ['allow_self_signed' => false]]);"
+  },
+  {
+    "id": "PHP221",
+    "family": "PHP",
+    "unsafe": "new GuzzleHttp\\Client(['verify' => false]);",
+    "safe": "new GuzzleHttp\\Client(['verify' => true]);"
+  },
+  {
+    "id": "PHP222",
+    "family": "PHP",
+    "unsafe": "ini_set('display_errors', '1');",
+    "safe": "ini_set('display_errors', '0');"
+  },
+  {
+    "id": "PHP223",
+    "family": "PHP",
+    "unsafe": "ini_set('log_errors', '0');",
+    "safe": "ini_set('log_errors', '1');"
+  },
+  {
+    "id": "PHP224",
+    "family": "PHP",
+    "unsafe": "ini_set('session.save_path', $_GET['path']);",
+    "safe": "ini_set('session.save_path', '/srv/app/sessions');"
+  },
+  {
+    "id": "GO200",
+    "family": "GO",
+    "unsafe": "tls.Config{Renegotiation: tls.RenegotiateFreelyAsClient}",
+    "safe": "tls.Config{Renegotiation: tls.RenegotiateNever}"
+  },
+  {
+    "id": "GO201",
+    "family": "GO",
+    "unsafe": "http.Server{ReadHeaderTimeout: 0}",
+    "safe": "http.Server{ReadHeaderTimeout: 5 * time.Second}"
+  },
+  {
+    "id": "GO202",
+    "family": "GO",
+    "unsafe": "template.CSS(userStyle)",
+    "safe": "selectAllowedStyle(styleID)"
+  },
+  {
+    "id": "GO203",
+    "family": "GO",
+    "unsafe": "websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}",
+    "safe": "websocket.Upgrader{}"
+  },
+  {
+    "id": "GO204",
+    "family": "GO",
+    "unsafe": "template.JSStr(userInput)",
+    "safe": "template.JSEscapeString(userInput)"
+  },
+  {
+    "id": "GO205",
+    "family": "GO",
+    "unsafe": "tmpl.Parse(c.PostForm(\"template\"))",
+    "safe": "template.ParseFiles(\"profile.html\")"
+  },
+  {
+    "id": "GO206",
+    "family": "GO",
+    "unsafe": "db.Query(r.URL.Query().Get(\"sql\"))",
+    "safe": "db.Query(\"select * from users where id = $1\", id)"
+  },
+  {
+    "id": "GO207",
+    "family": "GO",
+    "unsafe": "db.Exec(r.URL.Query().Get(\"sql\"))",
+    "safe": "db.Exec(\"delete from users where id = $1\", id)"
+  },
+  {
+    "id": "GO208",
+    "family": "GO",
+    "unsafe": "db.Raw(c.Query(\"sql\"))",
+    "safe": "db.Raw(\"select * from users where id = ?\", id)"
+  },
+  {
+    "id": "GO209",
+    "family": "GO",
+    "unsafe": "db.Order(c.Query(\"order\"))",
+    "safe": "db.Order(\"created_at desc\")"
+  },
+  {
+    "id": "GO210",
+    "family": "GO",
+    "unsafe": "db.Select(c.Query(\"columns\"))",
+    "safe": "db.Select(\"id\", \"name\")"
+  },
+  {
+    "id": "GO211",
+    "family": "GO",
+    "unsafe": "exec.Command(r.URL.Query().Get(\"program\"))",
+    "safe": "exec.Command(\"/usr/bin/tool\", validatedArg)"
+  },
+  {
+    "id": "GO212",
+    "family": "GO",
+    "unsafe": "c.File(c.Query(\"path\"))",
+    "safe": "c.File(allowedPath)"
+  },
+  {
+    "id": "GO213",
+    "family": "GO",
+    "unsafe": "c.FileAttachment(c.Query(\"path\"), \"download\")",
+    "safe": "c.FileAttachment(allowedPath, \"download\")"
+  },
+  {
+    "id": "GO214",
+    "family": "GO",
+    "unsafe": "net.Dial(\"tcp\", r.URL.Query().Get(\"address\"))",
+    "safe": "net.Dial(\"tcp\", allowedAddress)"
+  },
+  {
+    "id": "GO215",
+    "family": "GO",
+    "unsafe": "os.WriteFile(r.URL.Query().Get(\"path\"), data, 0600)",
+    "safe": "os.WriteFile(allowedPath, data, 0600)"
+  },
+  {
+    "id": "GO216",
+    "family": "GO",
+    "unsafe": "http.Get(c.Query(\"url\"))",
+    "safe": "http.Get(allowedURL)"
+  },
+  {
+    "id": "GO217",
+    "family": "GO",
+    "unsafe": "http.Post(r.URL.Query().Get(\"url\"), \"text/plain\", body)",
+    "safe": "http.Post(allowedURL, \"text/plain\", body)"
+  },
+  {
+    "id": "GO218",
+    "family": "GO",
+    "unsafe": "http.NewRequest(\"GET\", r.URL.Query().Get(\"url\"), nil)",
+    "safe": "http.NewRequest(\"GET\", allowedURL, nil)"
+  },
+  {
+    "id": "GO219",
+    "family": "GO",
+    "unsafe": "ldap.NewSearchRequest(base, 2, 0, 0, 0, false, r.URL.Query().Get(\"filter\"), nil, nil)",
+    "safe": "ldap.NewSearchRequest(base, 2, 0, 0, 0, false, safeFilter, nil, nil)"
+  },
+  {
+    "id": "GO220",
+    "family": "GO",
+    "unsafe": "CipherSuites: []uint16{tls.TLS_RSA_WITH_AES_128_CBC_SHA}",
+    "safe": "MinVersion: tls.VersionTLS13"
+  },
+  {
+    "id": "GO221",
+    "family": "GO",
+    "unsafe": "CipherSuites: []uint16{tls.TLS_RSA_WITH_RC4_128_SHA}",
+    "safe": "MinVersion: tls.VersionTLS13"
+  },
+  {
+    "id": "GO222",
+    "family": "GO",
+    "unsafe": "rsa.EncryptPKCS1v15(rand.Reader, key, data)",
+    "safe": "rsa.EncryptOAEP(sha256.New(), rand.Reader, key, data, nil)"
+  },
+  {
+    "id": "GO223",
+    "family": "GO",
+    "unsafe": "tls.Config{KeyLogWriter: keylogFile}",
+    "safe": "tls.Config{KeyLogWriter: nil}"
+  },
+  {
+    "id": "GO224",
+    "family": "GO",
+    "unsafe": "http.Cookie{Name: \"session\", Secure: false}",
+    "safe": "http.Cookie{Name: \"session\", Secure: true}"
+  },
+  {
+    "id": "CS200",
+    "family": "CS",
+    "unsafe": "new Regex(Request.Query[\"pattern\"]);",
+    "safe": "new Regex(Regex.Escape(text), RegexOptions.None, TimeSpan.FromSeconds(1));"
+  },
+  {
+    "id": "CS201",
+    "family": "CS",
+    "unsafe": "new ObjectStateFormatter().Deserialize(payload);",
+    "safe": "JsonSerializer.Deserialize<Profile>(payload);"
+  },
+  {
+    "id": "CS202",
+    "family": "CS",
+    "unsafe": "Directory.GetFiles(Request.Query[\"path\"]);",
+    "safe": "Directory.GetFiles(allowedDirectory);"
+  },
+  {
+    "id": "CS203",
+    "family": "CS",
+    "unsafe": "new JavaScriptSerializer(new SimpleTypeResolver());",
+    "safe": "new JavaScriptSerializer();"
+  },
+  {
+    "id": "CS204",
+    "family": "CS",
+    "unsafe": "dataSet.ReadXml(Request.Body);",
+    "safe": "JsonSerializer.Deserialize<Profile>(Request.Body);"
+  },
+  {
+    "id": "CS205",
+    "family": "CS",
+    "unsafe": "dataTable.ReadXml(Request.Body);",
+    "safe": "JsonSerializer.Deserialize<Profile>(Request.Body);"
+  },
+  {
+    "id": "CS206",
+    "family": "CS",
+    "unsafe": "XamlReader.Parse(Request.Form[\"xaml\"]);",
+    "safe": "LoadApprovedView(viewId);"
+  },
+  {
+    "id": "CS207",
+    "family": "CS",
+    "unsafe": "Assembly.LoadFrom(Request.Query[\"path\"]);",
+    "safe": "Assembly.LoadFrom(approvedAssembly);"
+  },
+  {
+    "id": "CS208",
+    "family": "CS",
+    "unsafe": "CSharpScript.EvaluateAsync(Request.Form[\"code\"]);",
+    "safe": "DispatchAllowedAction(action);"
+  },
+  {
+    "id": "CS209",
+    "family": "CS",
+    "unsafe": "document.SelectNodes(Request.Query[\"xpath\"]);",
+    "safe": "document.SelectNodes(\"/users/user\");"
+  },
+  {
+    "id": "CS210",
+    "family": "CS",
+    "unsafe": "command.CommandText = Request.Query[\"sql\"];",
+    "safe": "command.CommandText = \"select * from users where id=@id\";"
+  },
+  {
+    "id": "CS211",
+    "family": "CS",
+    "unsafe": "connection.Query(Request.Query[\"sql\"]);",
+    "safe": "connection.Query(\"select * from users where id=@id\", new { id });"
+  },
+  {
+    "id": "CS212",
+    "family": "CS",
+    "unsafe": "connection.Execute(Request.Form[\"sql\"]);",
+    "safe": "connection.Execute(\"delete from users where id=@id\", new { id });"
+  },
+  {
+    "id": "CS213",
+    "family": "CS",
+    "unsafe": "db.Database.ExecuteSqlRaw(Request.Form[\"sql\"]);",
+    "safe": "db.Database.ExecuteSqlInterpolated($\"delete from users where id={id}\");"
+  },
+  {
+    "id": "CS214",
+    "family": "CS",
+    "unsafe": "PhysicalFile(Request.Query[\"path\"], \"text/plain\");",
+    "safe": "PhysicalFile(allowedPath, \"text/plain\");"
+  },
+  {
+    "id": "CS215",
+    "family": "CS",
+    "unsafe": "File.Delete(Request.Query[\"path\"]);",
+    "safe": "File.Delete(allowedPath);"
+  },
+  {
+    "id": "CS216",
+    "family": "CS",
+    "unsafe": "Directory.Delete(Request.Query[\"path\"], true);",
+    "safe": "Directory.Delete(allowedDirectory, true);"
+  },
+  {
+    "id": "CS217",
+    "family": "CS",
+    "unsafe": "client.DownloadString(Request.Query[\"url\"]);",
+    "safe": "client.DownloadString(allowedURL);"
+  },
+  {
+    "id": "CS218",
+    "family": "CS",
+    "unsafe": "client.GetAsync(Request.Query[\"url\"]);",
+    "safe": "client.GetAsync(allowedURL);"
+  },
+  {
+    "id": "CS219",
+    "family": "CS",
+    "unsafe": "policy.AllowAnyOrigin();",
+    "safe": "policy.WithOrigins(\"https://app.example\");"
+  },
+  {
+    "id": "CS220",
+    "family": "CS",
+    "unsafe": "options.SameSite = SameSiteMode.None;",
+    "safe": "options.SameSite = SameSiteMode.Strict;"
+  },
+  {
+    "id": "CS221",
+    "family": "CS",
+    "unsafe": "options.HttpOnly = HttpOnlyPolicy.None;",
+    "safe": "options.HttpOnly = HttpOnlyPolicy.Always;"
+  },
+  {
+    "id": "CS222",
+    "family": "CS",
+    "unsafe": "options.Cookie.SecurePolicy = CookieSecurePolicy.None;",
+    "safe": "options.Cookie.SecurePolicy = CookieSecurePolicy.Always;"
+  },
+  {
+    "id": "CS223",
+    "family": "CS",
+    "unsafe": "options.IterationCount = 1000;",
+    "safe": "options.IterationCount = calibratedIterations;"
+  },
+  {
+    "id": "CS224",
+    "family": "CS",
+    "unsafe": "Rfc2898DeriveBytes.Pbkdf2(password, salt, 1000, HashAlgorithmName.SHA256, 32);",
+    "safe": "Rfc2898DeriveBytes.Pbkdf2(password, salt, calibratedIterations, HashAlgorithmName.SHA256, 32);"
+  },
+  {
+    "id": "RB200",
+    "family": "RB",
+    "unsafe": "User.delete_all(params[:filter])",
+    "safe": "User.where(id: validated_id).delete_all"
+  },
+  {
+    "id": "RB201",
+    "family": "RB",
+    "unsafe": "User.update_all(params[:updates])",
+    "safe": "User.where(id: id).update_all(name: validated_name)"
+  },
+  {
+    "id": "RB202",
+    "family": "RB",
+    "unsafe": "User.pluck(params[:column])",
+    "safe": "User.pluck(:name)"
+  },
+  {
+    "id": "RB203",
+    "family": "RB",
+    "unsafe": "User.joins(params[:join])",
+    "safe": "User.joins(:posts)"
+  },
+  {
+    "id": "RB204",
+    "family": "RB",
+    "unsafe": "User.group(params[:column])",
+    "safe": "User.group(:country)"
+  },
+  {
+    "id": "RB205",
+    "family": "RB",
+    "unsafe": "Arel.sql(params[:order])",
+    "safe": "User.order(created_at: :desc)"
+  },
+  {
+    "id": "RB206",
+    "family": "RB",
+    "unsafe": "target.instance_eval(params[:code])",
+    "safe": "dispatch_allowed_action(action)"
+  },
+  {
+    "id": "RB207",
+    "family": "RB",
+    "unsafe": "User.class_eval(params[:code])",
+    "safe": "dispatch_allowed_action(action)"
+  },
+  {
+    "id": "RB208",
+    "family": "RB",
+    "unsafe": "params[:class].constantize",
+    "safe": "allowed_classes.fetch(class_id)"
+  },
+  {
+    "id": "RB209",
+    "family": "RB",
+    "unsafe": "BCrypt::Engine.cost = 4",
+    "safe": "BCrypt::Engine.cost = calibrated_cost"
+  },
+  {
+    "id": "RB210",
+    "family": "RB",
+    "unsafe": "require(params[:module])",
+    "safe": "require('app/handlers')"
+  },
+  {
+    "id": "RB211",
+    "family": "RB",
+    "unsafe": "load(params[:path])",
+    "safe": "dispatch_allowed_action(action)"
+  },
+  {
+    "id": "RB212",
+    "family": "RB",
+    "unsafe": "redirect_to(params[:next])",
+    "safe": "redirect_to('/home')"
+  },
+  {
+    "id": "RB213",
+    "family": "RB",
+    "unsafe": "File.read(params[:path])",
+    "safe": "File.read(allowed_path)"
+  },
+  {
+    "id": "RB214",
+    "family": "RB",
+    "unsafe": "File.write(params[:path], data)",
+    "safe": "File.write(allowed_path, data)"
+  },
+  {
+    "id": "RB215",
+    "family": "RB",
+    "unsafe": "File.delete(params[:path])",
+    "safe": "File.delete(allowed_path)"
+  },
+  {
+    "id": "RB216",
+    "family": "RB",
+    "unsafe": "Net::HTTP.get(URI(params[:url]))",
+    "safe": "Net::HTTP.get(URI(allowed_url))"
+  },
+  {
+    "id": "RB217",
+    "family": "RB",
+    "unsafe": "ctx.ssl_version = :SSLv3",
+    "safe": "ctx.min_version = OpenSSL::SSL::TLS1_2_VERSION"
+  },
+  {
+    "id": "RB218",
+    "family": "RB",
+    "unsafe": "config.session_store :cookie_store, secure: false",
+    "safe": "config.session_store :cookie_store, secure: true"
+  },
+  {
+    "id": "RB219",
+    "family": "RB",
+    "unsafe": "config.filter_parameters = []",
+    "safe": "config.filter_parameters = [:password, :token]"
+  },
+  {
+    "id": "RS200",
+    "family": "RS",
+    "unsafe": "builder.set_min_proto_version(Some(SslVersion::TLS1));",
+    "safe": "builder.set_min_proto_version(Some(SslVersion::TLS1_2));"
+  },
+  {
+    "id": "RS201",
+    "family": "RS",
+    "unsafe": "builder.min_protocol_version(Some(Protocol::Tlsv10));",
+    "safe": "builder.min_protocol_version(Some(Protocol::Tlsv12));"
+  },
+  {
+    "id": "RS202",
+    "family": "RS",
+    "unsafe": "validation.validate_aud = false;",
+    "safe": "validation.validate_aud = true;"
+  },
+  {
+    "id": "RS203",
+    "family": "RS",
+    "unsafe": "validation.required_spec_claims.clear();",
+    "safe": "validation.set_required_spec_claims(&[\"exp\", \"iss\"]);"
+  },
+  {
+    "id": "RS204",
+    "family": "RS",
+    "unsafe": "sqlx::raw_sql(&format!(\"delete from users where id={}\", id));",
+    "safe": "sqlx::query(\"delete from users where id=$1\").bind(id);"
+  },
+  {
+    "id": "RS205",
+    "family": "RS",
+    "unsafe": "NamedFile::open(query.path.clone());",
+    "safe": "NamedFile::open(allowed_path);"
+  },
+  {
+    "id": "RS206",
+    "family": "RS",
+    "unsafe": "Statement::from_string(DbBackend::Postgres, format!(\"select * from users where id={}\", id));",
+    "safe": "Statement::from_sql_and_values(DbBackend::Postgres, \"select * from users where id=$1\", [id.into()]);"
+  },
+  {
+    "id": "RS207",
+    "family": "RS",
+    "unsafe": "tera.autoescape_on(vec![]);",
+    "safe": "tera.autoescape_on(vec![\".html\"]);"
+  },
+  {
+    "id": "RS208",
+    "family": "RS",
+    "unsafe": "hbs.register_escape_fn(handlebars::no_escape);",
+    "safe": "hbs.register_escape_fn(handlebars::html_escape);"
+  },
+  {
+    "id": "RS209",
+    "family": "RS",
+    "unsafe": "Files::new(\"/files\", \"./private\").show_files_listing();",
+    "safe": "Files::new(\"/files\", \"./public\");"
+  },
+  {
+    "id": "RS210",
+    "family": "RS",
+    "unsafe": "CorsLayer::permissive();",
+    "safe": "CorsLayer::new().allow_origin(approved_origin);"
+  },
+  {
+    "id": "RS211",
+    "family": "RS",
+    "unsafe": "CorsLayer::new().allow_origin(Any);",
+    "safe": "CorsLayer::new().allow_origin(approved_origin);"
+  },
+  {
+    "id": "RS212",
+    "family": "RS",
+    "unsafe": "unsafe { CString::from_vec_unchecked(user_bytes) };",
+    "safe": "CString::new(user_bytes)?;"
+  },
+  {
+    "id": "RS213",
+    "family": "RS",
+    "unsafe": "unsafe { std::str::from_utf8_unchecked(user_bytes) };",
+    "safe": "std::str::from_utf8(user_bytes)?;"
+  },
+  {
+    "id": "RS214",
+    "family": "RS",
+    "unsafe": "unsafe { buffer.set_len(user_len) };",
+    "safe": "buffer.resize(checked_len, 0);"
+  },
+  {
+    "id": "RS215",
+    "family": "RS",
+    "unsafe": "unsafe { std::mem::uninitialized() };",
+    "safe": "MaybeUninit::<Data>::uninit();"
+  },
+  {
+    "id": "RS216",
+    "family": "RS",
+    "unsafe": "unsafe { bytes.get_unchecked(user_index) };",
+    "safe": "bytes.get(user_index);"
+  },
+  {
+    "id": "RS217",
+    "family": "RS",
+    "unsafe": "Command::new(user_command).spawn();",
+    "safe": "Command::new(\"/usr/bin/tool\").arg(validated_arg).spawn();"
+  },
+  {
+    "id": "RS218",
+    "family": "RS",
+    "unsafe": "Cookie::build((\"session\", token)).secure(false);",
+    "safe": "Cookie::build((\"session\", token)).secure(true);"
+  },
+  {
+    "id": "RS219",
+    "family": "RS",
+    "unsafe": "Cookie::build((\"session\", token)).http_only(false);",
+    "safe": "Cookie::build((\"session\", token)).http_only(true);"
+  },
+  {
+    "id": "SWIFT200",
+    "family": "SWIFT",
+    "unsafe": "query[kSecAttrAccessible] = kSecAttrAccessibleAfterFirstUnlock",
+    "safe": "query[kSecAttrAccessible] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly"
+  },
+  {
+    "id": "SWIFT201",
+    "family": "SWIFT",
+    "unsafe": "let query = [kSecAttrSynchronizable: true]",
+    "safe": "let query = [kSecAttrSynchronizable: false]"
+  },
+  {
+    "id": "SWIFT202",
+    "family": "SWIFT",
+    "unsafe": "prefs.setValue(true, forKey: \"allowUniversalAccessFromFileURLs\")",
+    "safe": "prefs.setValue(false, forKey: \"allowUniversalAccessFromFileURLs\")"
+  },
+  {
+    "id": "SWIFT203",
+    "family": "SWIFT",
+    "unsafe": "prefs.javaScriptCanOpenWindowsAutomatically = true",
+    "safe": "prefs.javaScriptCanOpenWindowsAutomatically = false"
+  },
+  {
+    "id": "SWIFT204",
+    "family": "SWIFT",
+    "unsafe": "DisabledTrustEvaluator()",
+    "safe": "DefaultTrustEvaluator()"
+  },
+  {
+    "id": "SWIFT205",
+    "family": "SWIFT",
+    "unsafe": "PinnedCertificatesTrustEvaluator(acceptSelfSignedCertificates: true)",
+    "safe": "PinnedCertificatesTrustEvaluator(acceptSelfSignedCertificates: false)"
+  },
+  {
+    "id": "SWIFT206",
+    "family": "SWIFT",
+    "unsafe": "DefaultTrustEvaluator(validateHost: false)",
+    "safe": "DefaultTrustEvaluator(validateHost: true)"
+  },
+  {
+    "id": "SWIFT207",
+    "family": "SWIFT",
+    "unsafe": "CCKeyDerivationPBKDF(algorithm, password, length, salt, saltLength, prf, 1000, key, keyLength)",
+    "safe": "CCKeyDerivationPBKDF(algorithm, password, length, salt, saltLength, prf, calibratedIterations, key, keyLength)"
+  },
+  {
+    "id": "SWIFT208",
+    "family": "SWIFT",
+    "unsafe": "webView.isInspectable = true",
+    "safe": "webView.isInspectable = false"
+  },
+  {
+    "id": "SWIFT209",
+    "family": "SWIFT",
+    "unsafe": "SecKeyCreateEncryptedData(key, SecKeyAlgorithm.rsaEncryptionPKCS1, data, &error)",
+    "safe": "SecKeyCreateEncryptedData(key, SecKeyAlgorithm.rsaEncryptionOAEPSHA256, data, &error)"
+  },
+  {
+    "id": "SWIFT210",
+    "family": "SWIFT",
+    "unsafe": "parser.shouldResolveExternalEntities = true",
+    "safe": "parser.shouldResolveExternalEntities = false"
+  },
+  {
+    "id": "SWIFT211",
+    "family": "SWIFT",
+    "unsafe": "attributes[.protectionKey] = FileProtectionType.none",
+    "safe": "attributes[.protectionKey] = FileProtectionType.complete"
+  },
+  {
+    "id": "SWIFT212",
+    "family": "SWIFT",
+    "unsafe": "configuration.tlsMinimumSupportedProtocolVersion = .TLSv10",
+    "safe": "configuration.tlsMinimumSupportedProtocolVersion = .TLSv12"
+  },
+  {
+    "id": "SWIFT213",
+    "family": "SWIFT",
+    "unsafe": "UIPasteboard.general.string = password",
+    "safe": "UIPasteboard.general.string = publicText"
+  },
+  {
+    "id": "SWIFT214",
+    "family": "SWIFT",
+    "unsafe": "FileHandle(forReadingAtPath: userPath)",
+    "safe": "FileHandle(forReadingAtPath: allowedPath)"
+  },
+  {
+    "id": "SCALA200",
+    "family": "SCALA",
+    "unsafe": "factory.setFeature(\"http://xml.org/sax/features/external-general-entities\", true)",
+    "safe": "factory.setFeature(\"http://xml.org/sax/features/external-general-entities\", false)"
+  },
+  {
+    "id": "SCALA201",
+    "family": "SCALA",
+    "unsafe": "factory.setFeature(\"http://xml.org/sax/features/external-parameter-entities\", true)",
+    "safe": "factory.setFeature(\"http://xml.org/sax/features/external-parameter-entities\", false)"
+  },
+  {
+    "id": "SCALA202",
+    "family": "SCALA",
+    "unsafe": "factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, \"all\")",
+    "safe": "factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, \"\")"
+  },
+  {
+    "id": "SCALA203",
+    "family": "SCALA",
+    "unsafe": "Cipher.getInstance(\"RC4\")",
+    "safe": "Cipher.getInstance(\"AES/GCM/NoPadding\")"
+  },
+  {
+    "id": "SCALA204",
+    "family": "SCALA",
+    "unsafe": "Mac.getInstance(\"HmacMD5\")",
+    "safe": "Mac.getInstance(\"HmacSHA256\")"
+  },
+  {
+    "id": "SCALA205",
+    "family": "SCALA",
+    "unsafe": "stmt.executeQuery(request.getQueryString(\"sql\").get)",
+    "safe": "connection.prepareStatement(\"select * from users where id=?\")"
+  },
+  {
+    "id": "SCALA206",
+    "family": "SCALA",
+    "unsafe": "SessionCookieConfig(secure = false)",
+    "safe": "SessionCookieConfig(secure = true)"
+  },
+  {
+    "id": "SCALA207",
+    "family": "SCALA",
+    "unsafe": "SessionCookieConfig(httpOnly = false)",
+    "safe": "SessionCookieConfig(httpOnly = true)"
+  },
+  {
+    "id": "SCALA208",
+    "family": "SCALA",
+    "unsafe": "CSRF.bypassCSRFCheck(action)",
+    "safe": "CSRFCheck(action)"
+  },
+  {
+    "id": "SCALA209",
+    "family": "SCALA",
+    "unsafe": "SSLLooseConfig(disableCertificateVerification = true)",
+    "safe": "SSLLooseConfig(disableCertificateVerification = false)"
+  },
+  {
+    "id": "SCALA210",
+    "family": "SCALA",
+    "unsafe": "Class.forName(request.getQueryString(\"class\").get)",
+    "safe": "allowedClasses(classId)"
+  },
+  {
+    "id": "SCALA211",
+    "family": "SCALA",
+    "unsafe": "shell.evaluate(request.getQueryString(\"code\").get)",
+    "safe": "dispatchAllowedAction(action)"
+  },
+  {
+    "id": "SCALA212",
+    "family": "SCALA",
+    "unsafe": "Files.delete(Paths.get(request.getQueryString(\"path\").get))",
+    "safe": "Files.delete(allowedPath)"
+  },
+  {
+    "id": "SCALA213",
+    "family": "SCALA",
+    "unsafe": "Files.readAllBytes(Paths.get(request.getQueryString(\"path\").get))",
+    "safe": "Files.readAllBytes(allowedPath)"
+  },
+  {
+    "id": "SCALA214",
+    "family": "SCALA",
+    "unsafe": "new PBEKeySpec(password, salt, 1000, 256)",
+    "safe": "new PBEKeySpec(password, salt, calibratedIterations, 256)"
+  },
+  {
+    "id": "SH200",
+    "family": "SH",
+    "unsafe": "docker run --security-opt seccomp=unconfined app",
+    "safe": "docker run --security-opt seccomp=default.json app"
+  },
+  {
+    "id": "SH201",
+    "family": "SH",
+    "unsafe": "docker run --security-opt apparmor=unconfined app",
+    "safe": "docker run --security-opt apparmor=docker-default app"
+  },
+  {
+    "id": "SH202",
+    "family": "SH",
+    "unsafe": "docker run --pid=host app",
+    "safe": "docker run --pid=private app"
+  },
+  {
+    "id": "SH203",
+    "family": "SH",
+    "unsafe": "docker run --ipc=host app",
+    "safe": "docker run --ipc=private app"
+  },
+  {
+    "id": "SH204",
+    "family": "SH",
+    "unsafe": "docker run -v /var/run/docker.sock:/var/run/docker.sock app",
+    "safe": "docker run -v app-data:/data app"
+  },
+  {
+    "id": "SH205",
+    "family": "SH",
+    "unsafe": "kubectl proxy --accept-hosts='.*'",
+    "safe": "kubectl proxy --accept-hosts='^localhost$'"
+  },
+  {
+    "id": "SH206",
+    "family": "SH",
+    "unsafe": "kubectl --insecure-skip-tls-verify=true get pods",
+    "safe": "kubectl --certificate-authority=ca.pem get pods"
+  },
+  {
+    "id": "SH207",
+    "family": "SH",
+    "unsafe": "helm repo add app https://repo.example --insecure-skip-tls-verify",
+    "safe": "helm repo add app https://repo.example --ca-file ca.pem"
+  },
+  {
+    "id": "SH208",
+    "family": "SH",
+    "unsafe": "git config --global http.sslVerify false",
+    "safe": "git config --global http.sslVerify true"
+  },
+  {
+    "id": "SH209",
+    "family": "SH",
+    "unsafe": "npm config set strict-ssl false",
+    "safe": "npm config set strict-ssl true"
+  },
+  {
+    "id": "SH210",
+    "family": "SH",
+    "unsafe": "pip install --trusted-host packages.example library",
+    "safe": "pip install --cert ca.pem library"
+  },
+  {
+    "id": "SH211",
+    "family": "SH",
+    "unsafe": "curl --proto-redir all --location https://api.example",
+    "safe": "curl --proto-redir '=https' --location https://api.example"
+  },
+  {
+    "id": "SH212",
+    "family": "SH",
+    "unsafe": "wget --password=synthetic-pass https://api.example",
+    "safe": "wget --use-askpass=credential-helper https://api.example"
+  },
+  {
+    "id": "SH213",
+    "family": "SH",
+    "unsafe": "sshpass -p synthetic-pass ssh app@host",
+    "safe": "ssh -i /run/secrets/ssh-key app@host"
+  },
+  {
+    "id": "SH214",
+    "family": "SH",
+    "unsafe": "openssl s_client -ssl3 -connect host:443",
+    "safe": "openssl s_client -tls1_3 -connect host:443"
+  },
+  {
+    "id": "SH215",
+    "family": "SH",
+    "unsafe": "openssl verify -no_check_time cert.pem",
+    "safe": "openssl verify -CAfile ca.pem cert.pem"
+  },
+  {
+    "id": "SH216",
+    "family": "SH",
+    "unsafe": "tar -xf upload.tar --overwrite",
+    "safe": "extract_validated_archive upload.tar"
+  },
+  {
+    "id": "SH217",
+    "family": "SH",
+    "unsafe": "unzip upload.zip -d /",
+    "safe": "unzip checked.zip -d /srv/uploads"
+  },
+  {
+    "id": "SH218",
+    "family": "SH",
+    "unsafe": "find . -exec sh -c 'process {}' \\;",
+    "safe": "find . -exec process -- {} \\;"
+  },
+  {
+    "id": "SH219",
+    "family": "SH",
+    "unsafe": "sudo -E /usr/bin/app",
+    "safe": "sudo /usr/bin/app"
+  },
+  {
+    "id": "CFG200",
+    "family": "CFG",
+    "unsafe": "enableHttpsTrafficOnly: false",
+    "safe": "enableHttpsTrafficOnly: true"
+  },
+  {
+    "id": "CFG201",
+    "family": "CFG",
+    "unsafe": "minimumTlsVersion: TLS1_0",
+    "safe": "minimumTlsVersion: TLS1_2"
+  },
+  {
+    "id": "CFG202",
+    "family": "CFG",
+    "unsafe": "network_acls { default_action = \"Allow\" }",
+    "safe": "network_acls { default_action = \"Deny\" }"
+  },
+  {
+    "id": "CFG203",
+    "family": "CFG",
+    "unsafe": "auditing_enabled = false",
+    "safe": "auditing_enabled = true"
+  },
+  {
+    "id": "CFG204",
+    "family": "CFG",
+    "unsafe": "purge_protection_enabled = false",
+    "safe": "purge_protection_enabled = true"
+  },
+  {
+    "id": "CFG205",
+    "family": "CFG",
+    "unsafe": "public_network_access_enabled = true",
+    "safe": "public_network_access_enabled = false"
+  },
+  {
+    "id": "CFG206",
+    "family": "CFG",
+    "unsafe": "encrypted = false",
+    "safe": "encrypted = true"
+  },
+  {
+    "id": "CFG207",
+    "family": "CFG",
+    "unsafe": "http_tokens = \"optional\"",
+    "safe": "http_tokens = \"required\""
+  },
+  {
+    "id": "CFG208",
+    "family": "CFG",
+    "unsafe": "access_logs { enabled = false }",
+    "safe": "access_logs { enabled = true }"
+  },
+  {
+    "id": "CFG209",
+    "family": "CFG",
+    "unsafe": "enable_log_file_validation = false",
+    "safe": "enable_log_file_validation = true"
+  },
+  {
+    "id": "CFG210",
+    "family": "CFG",
+    "unsafe": "is_multi_region_trail = false",
+    "safe": "is_multi_region_trail = true"
+  },
+  {
+    "id": "CFG211",
+    "family": "CFG",
+    "unsafe": "backup_retention_period = 0",
+    "safe": "backup_retention_period = 7"
+  },
+  {
+    "id": "CFG212",
+    "family": "CFG",
+    "unsafe": "skip_final_snapshot = true",
+    "safe": "skip_final_snapshot = false"
+  },
+  {
+    "id": "CFG213",
+    "family": "CFG",
+    "unsafe": "iam_database_authentication_enabled = false",
+    "safe": "iam_database_authentication_enabled = true"
+  },
+  {
+    "id": "CFG214",
+    "family": "CFG",
+    "unsafe": "name = \"require_ssl\" value = \"false\"",
+    "safe": "name = \"require_ssl\" value = \"true\""
+  },
+  {
+    "id": "CFG215",
+    "family": "CFG",
+    "unsafe": "transit_encryption_enabled = false",
+    "safe": "transit_encryption_enabled = true"
+  },
+  {
+    "id": "CFG216",
+    "family": "CFG",
+    "unsafe": "at_rest_encryption_enabled = false",
+    "safe": "at_rest_encryption_enabled = true"
+  },
+  {
+    "id": "CFG217",
+    "family": "CFG",
+    "unsafe": "node_to_node_encryption { enabled = false }",
+    "safe": "node_to_node_encryption { enabled = true }"
+  },
+  {
+    "id": "CFG218",
+    "family": "CFG",
+    "unsafe": "enforce_https = false",
+    "safe": "enforce_https = true"
+  },
+  {
+    "id": "CFG219",
+    "family": "CFG",
+    "unsafe": "anonymous_auth_enabled = true",
+    "safe": "anonymous_auth_enabled = false"
+  },
+  {
+    "id": "CFG220",
+    "family": "CFG",
+    "unsafe": "ssl_mode = \"ALLOW_UNENCRYPTED_AND_ENCRYPTED\"",
+    "safe": "ssl_mode = \"ENCRYPTED_ONLY\""
+  },
+  {
+    "id": "CFG221",
+    "family": "CFG",
+    "unsafe": "ipv4_enabled = true",
+    "safe": "ipv4_enabled = false"
+  },
+  {
+    "id": "CFG222",
+    "family": "CFG",
+    "unsafe": "uniform_bucket_level_access = false",
+    "safe": "uniform_bucket_level_access = true"
+  },
+  {
+    "id": "CFG223",
+    "family": "CFG",
+    "unsafe": "network_policy { enabled = false }",
+    "safe": "network_policy { enabled = true }"
+  },
+  {
+    "id": "CFG224",
+    "family": "CFG",
+    "unsafe": "enable_legacy_abac = true",
+    "safe": "enable_legacy_abac = false"
+  },
+  {
+    "id": "CFG225",
+    "family": "CFG",
+    "unsafe": "mode = \"GCE_METADATA\"",
+    "safe": "mode = \"GKE_METADATA\""
+  },
+  {
+    "id": "CFG226",
+    "family": "CFG",
+    "unsafe": "mfa_delete = \"Disabled\"",
+    "safe": "mfa_delete = \"Enabled\""
+  },
+  {
+    "id": "CFG227",
+    "family": "CFG",
+    "unsafe": "runAsGroup: 0",
+    "safe": "runAsGroup: 1000"
+  },
+  {
+    "id": "CFG228",
+    "family": "CFG",
+    "unsafe": "seLinuxOptions: { type: unconfined_t }",
+    "safe": "seLinuxOptions: { type: container_t }"
+  },
+  {
+    "id": "CFG229",
+    "family": "CFG",
+    "unsafe": "command: etcd --client-cert-auth=false",
+    "safe": "command: etcd --client-cert-auth=true"
+  },
+  {
+    "id": "CFG230",
+    "family": "CFG",
+    "unsafe": "command: etcd --peer-client-cert-auth=false",
+    "safe": "command: etcd --peer-client-cert-auth=true"
+  },
+  {
+    "id": "CFG231",
+    "family": "CFG",
+    "unsafe": "args: --authentication-token-webhook=false",
+    "safe": "args: --authentication-token-webhook=true"
+  },
+  {
+    "id": "CFG232",
+    "family": "CFG",
+    "unsafe": "args: --authorization-mode=AlwaysAllow",
+    "safe": "args: --authorization-mode=Webhook"
+  },
+  {
+    "id": "CFG233",
+    "family": "CFG",
+    "unsafe": "args: --anonymous-auth=true",
+    "safe": "args: --anonymous-auth=false"
+  },
+  {
+    "id": "CFG234",
+    "family": "CFG",
+    "unsafe": "args: --insecure-port=8080",
+    "safe": "args: --insecure-port=0"
+  },
+  {
+    "id": "CFG235",
+    "family": "CFG",
+    "unsafe": "PermitEmptyPasswords yes",
+    "safe": "PermitEmptyPasswords no"
+  },
+  {
+    "id": "CFG236",
+    "family": "CFG",
+    "unsafe": "StrictModes no",
+    "safe": "StrictModes yes"
+  },
+  {
+    "id": "CFG237",
+    "family": "CFG",
+    "unsafe": "PermitRootLogin yes",
+    "safe": "PermitRootLogin prohibit-password"
+  },
+  {
+    "id": "CFG238",
+    "family": "CFG",
+    "unsafe": "UsePAM no",
+    "safe": "UsePAM yes"
+  },
+  {
+    "id": "CFG239",
+    "family": "CFG",
+    "unsafe": "proxy_ssl_protocols TLSv1 TLSv1.1;",
+    "safe": "proxy_ssl_protocols TLSv1.2 TLSv1.3;"
+  },
+  {
+    "id": "CFG240",
+    "family": "CFG",
+    "unsafe": "grpc_ssl_verify off;",
+    "safe": "grpc_ssl_verify on;"
+  },
+  {
+    "id": "CFG241",
+    "family": "CFG",
+    "unsafe": "Options +Indexes",
+    "safe": "Options -Indexes"
+  },
+  {
+    "id": "CFG242",
+    "family": "CFG",
+    "unsafe": "TraceEnable on",
+    "safe": "TraceEnable off"
+  },
+  {
+    "id": "CFG243",
+    "family": "CFG",
+    "unsafe": "<Connector allowTrace=\"true\" />",
+    "safe": "<Connector allowTrace=\"false\" />"
+  },
+  {
+    "id": "CFG244",
+    "family": "CFG",
+    "unsafe": "tls_verify = false",
+    "safe": "tls_verify = true"
+  }
+]

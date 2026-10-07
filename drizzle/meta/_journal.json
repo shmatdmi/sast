@@ -1,6 +1,6 @@
 {
   "version": "7",
-  "dialect": "sqlite",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
@@ -35,6 +35,55 @@
       "version": "7",
       "when": 1790167575227,
       "tag": "0004_flawless_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791142889731,
+      "tag": "0005_little_silvermane",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791216000000,
+      "tag": "0006_http_rule_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791216000001,
+      "tag": "0007_http_rule_catalog_5000",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791216000002,
+      "tag": "0008_framework_rule_catalog_20000",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791216000003,
+      "tag": "0009_composed_rule_catalog_70000",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791216000004,
+      "tag": "0010_expression_rule_catalog_150000",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791360271412,
+      "tag": "0011_coverage_20_languages",
       "breakpoints": true
     }
   ]

@@ -11,13 +11,18 @@
     "image:build": "node scripts/build-image.mjs",
     "image:publish": "node scripts/build-image.mjs --push",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs tests/sast-engine.test.ts tests/extended-rules.test.ts tests/rules-expansion.test.ts tests/archive.test.ts tests/additional.test.ts tests/auth.test.ts tests/sonar-lite.test.ts tests/scan-json.test.ts",
-    "test:coverage": "node --experimental-test-coverage --test-coverage-include=app/lib/archive.ts --test-coverage-include=app/lib/sast-engine.ts --test-coverage-include=app/lib/sast-rules.ts --test-coverage-include=app/lib/sast-rules-expansion.ts --test tests/sast-engine.test.ts tests/extended-rules.test.ts tests/rules-expansion.test.ts tests/archive.test.ts tests/additional.test.ts",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs && npm run test:unit",
+    "test:coverage": "node scripts/test-unit.mjs --coverage",
     "rules:catalog": "node scripts/generate-rule-catalog.mjs",
+    "rules:seed": "node scripts/seed-sast-rules.mjs",
+    "test:rules-db": "node --test tests/rule-catalog-db.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern tmp",
     "check": "npm run lint && npm test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "test:unit": "node scripts/test-unit.mjs",
+    "test:integration": "npm run build && node scripts/test-api.mjs",
+    "test:all": "npm run check && node scripts/test-api.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.2",

@@ -242,8 +242,8 @@ const cases = Object.entries(examples).flatMap(([prefix, pairs]) => pairs.map(([
 test("expansion adds 200 unique rules with independent fixtures and complete metadata", () => {
   const pack = createExpansionRules(["unknown"]);
   assert.equal(pack.length, 200);
-  assert.equal(ruleCount, 400);
-  assert.equal(new Set(staticRuleIds).size, 400);
+  assert.equal(ruleCount, 150036);
+  assert.equal(new Set(staticRuleIds).size, ruleCount);
   assert.deepEqual(cases.map(({ id }) => id).sort(), pack.map((rule) => rule.id).sort());
   assert.equal(new Set(pack.map((rule) => `${rule.languages.join(',')}:${rule.pattern}`)).size, 200);
   for (const rule of pack) {
@@ -288,7 +288,7 @@ test("new rules preserve CRLF positions, IDs and Kotlin applicability", () => {
   assert.ok(result.findings.some((item) => item.ruleId === "CFG120" && item.line === 2));
   assert.equal(new Set(result.findings.map((item) => item.id)).size, result.findings.length);
 });
-test("400 rules scan large safe sources within a practical time bound", () => {
+test("20000 rules scan large safe sources within a practical time bound", () => {
   const started = performance.now();
   for (const filename of ["large.ts", "large.py", "large.conf"]) {
     const result = scanCode("# plain text\n".repeat(20000), filename);
